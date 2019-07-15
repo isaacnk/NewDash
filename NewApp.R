@@ -1,6 +1,5 @@
 library(shiny)
 library(shinydashboard)
-library(shinydashboardPlus)
 library(shinyWidgets)
 library(dashboardthemes)
 library(leaflet)
@@ -320,10 +319,10 @@ theme_air_chicago <- shinyDashboardThemeDIY(
 
 ##### THEME END #####
 
-ui <- dashboardPagePlus(
+ui <- dashboardPage(
 
   ##### LOGO START #####
-  dashboardHeaderPlus(title = shinyDashboardLogoDIY(boldText = "Open Air",
+  dashboardHeader(title = shinyDashboardLogoDIY(boldText = "Open Air",
                                                     mainText = "Chicago",
                                                     textSize = 16,
                                                     badgeText = "BETA",
