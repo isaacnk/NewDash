@@ -9,6 +9,7 @@ library(lubridate)
 library(grDevices)
 library(plotly)
 library(data.table)
+library(raster)
 
 ####### THIS WEEK ########
 ### Fix up aesthetics --> look into how Eric did the formatting on his graph
@@ -24,8 +25,7 @@ library(data.table)
 ##### DATA LOADING START #####
 source("DashFunctions.R")
 
-#master.grid <- st_read("Data/Master_Grid") #
-master.raster <- raster::stack("Data/Master_Raster.tif")
+master.raster <- stack("Data/Master_Raster.tif")
 raster.names <- read.csv("Data/Master_Raster_Names.csv")
 names(master.raster) <- raster.names$names.master.grid.
 
@@ -790,9 +790,9 @@ server <- function(input, output) {
 
       in.pal <- "ovr"
 
-      aod.pal <- palFromLayer(this.aod.name, style = in.pal)
+      aod.pal <- palFromLayer(this.aod.name, style = in.pal, raster = master.raster)
 
-      dashMap(this.aod.name, aod.pal)
+      dashMap(this.aod.name, aod.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -803,9 +803,9 @@ server <- function(input, output) {
 
     in.pal <- input$aod_rad
 
-    aod.pal <- palFromLayer(this.aod.name, style = in.pal)
+    aod.pal <- palFromLayer(this.aod.name, style = in.pal, raster = master.raster)
 
-    sliderProxy("aod_map", this.aod.name, aod.pal)
+    sliderProxy("aod_map", this.aod.name, aod.pal, raster = master.raster)
     }
   })
 
@@ -813,9 +813,10 @@ server <- function(input, output) {
     this.ndvi.name <- "NDVI_3_16"
     in.pal <- "ovr"
 
-    ndvi.pal <- palFromLayer(this.ndvi.name, style = in.pal, colors = c("lightblue", "yellow", "lightgreen", "green", "darkgreen"))
+    ndvi.pal <- palFromLayer(this.ndvi.name, style = in.pal, colors = c("lightblue", "yellow", "lightgreen", "green", "darkgreen"),
+                             raster = master.raster)
 
-    dashMap(this.ndvi.name, ndvi.pal)
+    dashMap(this.ndvi.name, ndvi.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -826,9 +827,10 @@ server <- function(input, output) {
 
     in.pal <- input$ndvi_rad
 
-    ndvi.pal <- palFromLayer(this.ndvi.name, style = in.pal, colors = c("lightblue", "yellow", "lightgreen", "green", "darkgreen"))
+    ndvi.pal <- palFromLayer(this.ndvi.name, style = in.pal, colors = c("lightblue", "yellow", "lightgreen", "green", "darkgreen"),
+                             raster = master.raster)
 
-    sliderProxy("ndvi_map", this.ndvi.name, ndvi.pal)
+    sliderProxy("ndvi_map", this.ndvi.name, ndvi.pal, raster = master.raster)
     }
   })
 
@@ -838,9 +840,9 @@ server <- function(input, output) {
 
     in.pal <- "ovr"
 
-    brf.pal <- palFromLayer(this.brf.name, style = in.pal, colors = c("black", "white"))
+    brf.pal <- palFromLayer(this.brf.name, style = in.pal, colors = c("black", "white"), raster = master.raster)
 
-    brf.map <- dashMap(this.brf.name, brf.pal)
+    brf.map <- dashMap(this.brf.name, brf.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -851,32 +853,32 @@ server <- function(input, output) {
 
     in.pal <- input$brf_rad
 
-    brf.pal <- palFromLayer(this.brf.name, style = in.pal, colors = c("black", "white"))
+    brf.pal <- palFromLayer(this.brf.name, style = in.pal, colors = c("black", "white"), raster = master.raster)
 
-    brf.map <- dashMap(this.brf.name, brf.pal)
+    brf.map <- dashMap(this.brf.name, brf.pal, raster = master.raster, area = large.area)
     }
   })
 
   output$grn_map <- renderLeaflet({
-    grn.pal <- palFromLayer("grn_ndx", colors = c("white","lightgreen", "green", "darkgreen"))
-    grn.map <- dashMap("grn_ndx", grn.pal)
+    grn.pal <- palFromLayer("grn_ndx", colors = c("white","lightgreen", "green", "darkgreen"), raster = master.raster)
+    grn.map <- dashMap("grn_ndx", grn.pal, raster = master.raster, area = large.area)
   })
 
   output$gry_map <- renderLeaflet({
-    gry.pal <- palFromLayer("gry_ndx", colors = c("white", "lightgray", "gray", "darkgray", "black"))
-    gry.map <- dashMap("gry_ndx", gry.pal)
+    gry.pal <- palFromLayer("gry_ndx", colors = c("white", "lightgray", "gray", "darkgray", "black"), raster = master.raster)
+    gry.map <- dashMap("gry_ndx", gry.pal, raster = master.raster, area = large.area)
   })
 
   output$blu_map <- renderLeaflet({
-    blu.pal <- palFromLayer("blu_ndx", colors = c("white","lightblue", "blue", "darkblue"))
-    blu.map <- dashMap("blu_ndx", blu.pal)
+    blu.pal <- palFromLayer("blu_ndx", colors = c("white","lightblue", "blue", "darkblue"), raster = master.raster)
+    blu.map <- dashMap("blu_ndx", blu.pal, raster = master.raster, area = large.area)
   })
 
   output$elevation_map <- renderLeaflet({
 
-    elev.pal <- palFromLayer("Elev")
+    elev.pal <- palFromLayer("Elev", raster = master.raster)
 
-    elevation.map <- dashMap("Elev", elev.pal)
+    elevation.map <- dashMap("Elev", elev.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -886,9 +888,9 @@ server <- function(input, output) {
 
     in.pal <- "ovr"
 
-    pm25.pal <- palFromLayer(this.pm25.name, style = in.pal)
+    pm25.pal <- palFromLayer(this.pm25.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.pm25.name, pm25.pal)
+    dashMap(this.pm25.name, pm25.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -899,9 +901,9 @@ server <- function(input, output) {
 
     in.pal <- input$pm25_rad
 
-    pm25.pal <- palFromLayer(this.pm25.name, style = in.pal)
+    pm25.pal <- palFromLayer(this.pm25.name, style = in.pal, raster = master.raster)
 
-    sliderProxy("pm25_map", this.pm25.name, pm25.pal)
+    sliderProxy("pm25_map", this.pm25.name, pm25.pal, raster = master.raster)
     }
   })
 
@@ -911,9 +913,9 @@ server <- function(input, output) {
 
     in.pal <- "ovr"
 
-    pm10.pal <- palFromLayer(this.pm10.name, style = in.pal)
+    pm10.pal <- palFromLayer(this.pm10.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.pm10.name, pm10.pal)
+    dashMap(this.pm10.name, pm10.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -924,9 +926,9 @@ server <- function(input, output) {
 
     in.pal <- input$pm10_rad
 
-    pm10.pal <- palFromLayer(this.pm10.name, style = in.pal)
+    pm10.pal <- palFromLayer(this.pm10.name, style = in.pal, raster = master.raster)
 
-    sliderProxy("pm10_map", this.pm10.name, pm10.pal)
+    sliderProxy("pm10_map", this.pm10.name, pm10.pal, raster = master.raster)
     }
   })
 
@@ -936,9 +938,9 @@ server <- function(input, output) {
 
     in.pal <- "ovr"
 
-    co.pal <- palFromLayer(this.co.name, style = in.pal)
+    co.pal <- palFromLayer(this.co.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.co.name, co.pal)
+    dashMap(this.co.name, co.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -949,9 +951,9 @@ server <- function(input, output) {
 
       in.pal <- input$co_rad
 
-      co.pal <- palFromLayer(this.co.name, style = in.pal)
+      co.pal <- palFromLayer(this.co.name, style = in.pal, raster = master.raster)
 
-      sliderProxy("co_map", this.co.name, co.pal)
+      sliderProxy("co_map", this.co.name, co.pal, raster = master.raster)
     }
   })
 
@@ -961,9 +963,9 @@ server <- function(input, output) {
 
     in.pal <- "ovr"
 
-    nox.pal <- palFromLayer(this.nox.name, style = in.pal)
+    nox.pal <- palFromLayer(this.nox.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.nox.name, nox.pal)
+    dashMap(this.nox.name, nox.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -974,9 +976,9 @@ server <- function(input, output) {
 
     in.pal <- input$nox_rad
 
-    nox.pal <- palFromLayer(this.nox.name, style = in.pal)
+    nox.pal <- palFromLayer(this.nox.name, style = in.pal, raster = master.raster)
 
-    sliderProxy("nox_map", this.nox.name, nox.pal)
+    sliderProxy("nox_map", this.nox.name, nox.pal, raster = master.raster)
     }
   })
 
@@ -985,9 +987,9 @@ server <- function(input, output) {
     this.o3.name <- "Ozone_3_16"
     in.pal <- "ovr"
 
-    o3.pal <- palFromLayer(this.o3.name, style = in.pal)
+    o3.pal <- palFromLayer(this.o3.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.o3.name, o3.pal)
+    dashMap(this.o3.name, o3.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -998,9 +1000,9 @@ server <- function(input, output) {
 
     in.pal <- input$o3_rad
 
-    o3.pal <- palFromLayer(this.o3.name, style = in.pal)
+    o3.pal <- palFromLayer(this.o3.name, style = in.pal, raster = master.raster)
 
-    sliderProxy("o3_map", this.o3.name, o3.pal)
+    sliderProxy("o3_map", this.o3.name, o3.pal, raster = master.raster)
     }
   })
 
@@ -1010,9 +1012,9 @@ server <- function(input, output) {
 
     in.pal <- "ovr"
 
-    so2.pal <- palFromLayer(this.so2.name, style = in.pal)
+    so2.pal <- palFromLayer(this.so2.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.so2.name, so2.pal)
+    dashMap(this.so2.name, so2.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -1023,9 +1025,9 @@ server <- function(input, output) {
 
       in.pal <- input$so2_rad
 
-      so2.pal <- palFromLayer(this.so2.name, style = in.pal)
+      so2.pal <- palFromLayer(this.so2.name, style = in.pal, raster = master.raster)
 
-      sliderProxy("so2_map", this.so2.name, so2.pal)
+      sliderProxy("so2_map", this.so2.name, so2.pal, raster = master.raster)
     }
 
   })
@@ -1036,9 +1038,9 @@ server <- function(input, output) {
 
     in.pal <- "ovr"
 
-    pb.pal <- palFromLayer(this.pb.name, style = in.pal)
+    pb.pal <- palFromLayer(this.pb.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.pb.name, pb.pal)
+    dashMap(this.pb.name, pb.pal, raster = master.raster, area = large.area)
 
   })
 
@@ -1050,9 +1052,9 @@ server <- function(input, output) {
 
       in.pal <- input$pb_rad
 
-      pb.pal <- palFromLayer(this.pb.name, style = in.pal)
+      pb.pal <- palFromLayer(this.pb.name, style = in.pal, raster = master.raster)
 
-      sliderProxy("pb_map", this.pb.name, pb.pal)
+      sliderProxy("pb_map", this.pb.name, pb.pal, raster = master.raster)
 
     }
 
@@ -1060,13 +1062,13 @@ server <- function(input, output) {
 
   output$pe_map <- renderLeaflet({
 
-    pe.pal <- palFromLayer("PECount")
-    pe.map <- dashMap("PECount", pe.pal)
+    pe.pal <- palFromLayer("PECount", raster = master.raster)
+    pe.map <- dashMap("PECount", pe.pal, raster = master.raster, area = large.area)
 
   })
 
   output$roads_map <- renderLeaflet({
-    roads.map <- dashMap("RdDnsty", roads.pal)
+    roads.map <- dashMap("RdDnsty", roads.pal, raster = master.raster, area = large.area)
   })
 
   output$temp_map <- renderLeaflet({
@@ -1074,9 +1076,9 @@ server <- function(input, output) {
 
     in.pal <- "ovr"
 
-    temp.pal <- palFromLayer(this.temp.name, style = in.pal)
+    temp.pal <- palFromLayer(this.temp.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.temp.name, temp.pal)
+    dashMap(this.temp.name, temp.pal, raster = master.raster, area = large.area)
   })
 
   observe({
@@ -1086,9 +1088,9 @@ server <- function(input, output) {
 
       in.pal <- input$temp_rad
 
-      temp.pal <- palFromLayer(this.temp.name, style = in.pal)
+      temp.pal <- palFromLayer(this.temp.name, style = in.pal, raster = master.raster)
 
-      sliderProxy("temp_map", this.temp.name, temp.pal)
+      sliderProxy("temp_map", this.temp.name, temp.pal, raster = master.raster)
     }
   })
 
@@ -1100,9 +1102,9 @@ server <- function(input, output) {
   #   in.date <- input$precip_dt
   #   this.precip.name <- getLayerName(in.date, "Precip")
   #
-  #   precip.pal <- palFromLayer(this.precip.name)
+  #   precip.pal <- palFromLayer(this.precip.name, raster = master.raster)
   #
-  #   precip.map <- dashMap(this.precip.name, precip.pal)
+  #   precip.map <- dashMap(this.precip.name, precip.pal, raster = master.raster, area = large.area)
   # })
   #
 

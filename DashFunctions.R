@@ -66,7 +66,7 @@ getLayerName <- function(in.date, variable) {
 }
 
 ##### Generate Leaflet Map 
-dashMap <- function(layername, layerpal, raster = master.raster, area = large.area) {
+dashMap <- function(layername, layerpal, raster, area) {
   
     leaflet(layername) %>%
     addProviderTiles("Hydda.Full") %>%
@@ -87,7 +87,7 @@ dashMap <- function(layername, layerpal, raster = master.raster, area = large.ar
 
 ##### For use in observe function with slider
 
-sliderProxy <- function(mapname, layername, layerpal, raster = master.raster) {
+sliderProxy <- function(mapname, layername, layerpal, raster) {
   leafletProxy(mapname) %>%
     clearControls() %>%
     clearImages() %>%
@@ -101,7 +101,7 @@ sliderProxy <- function(mapname, layername, layerpal, raster = master.raster) {
 #ovr: Palette covers entire 5 year period (input "AOD", "NDVI", etc)
 
 palFromLayer <- function(layername, style = "ovr", colors = c("green", "yellow", "orange", "red"), 
-                         raster = master.raster, nacolor = "transparent") {
+                         raster, nacolor = "transparent") {
   if(style == "qtr") {
     
     this.raster <- raster[[layername]]
@@ -112,14 +112,14 @@ palFromLayer <- function(layername, style = "ovr", colors = c("green", "yellow",
   } else if (style == "ovr") {
     layer.var <- substring(layername, 1, 3)
     
-    this.raster <- raster[[which(grepl(layer.var, names(master.raster)))]]
+    this.raster <- raster[[which(grepl(layer.var, names(raster)))]]
     
     max <- max(maxValue(this.raster))
     min <- min(minValue(this.raster))
     
   } else if (style == "yr") {
     layer.var <- substring(layername, 1, 3)
-    var.raster <- raster[[which(grepl(layer.var, names(master.raster)))]]
+    var.raster <- raster[[which(grepl(layer.var, names(raster)))]]
 
     layer.yr <- substring(layername, (nchar(layername) - 1), nchar(layername))
     this.raster <- var.raster[[which(grepl(layer.yr, names(var.raster)))]]
