@@ -3,6 +3,7 @@ library(shinydashboard)
 library(shinyWidgets)
 library(dashboardthemes)
 library(leaflet)
+library(rgdal)
 library(sf)
 library(lubridate)
 library(grDevices)
@@ -508,28 +509,31 @@ ui <- dashboardPage(
     tabItem(tabName = "downloads",
             fluidRow(
               box(width = 12,
-                  h1("Downloads", align = "center"),
-                  br(),
-                  p("*INSERT TEXT AND SCREENSHOTS OF CSVS AND SHAPEFILES*", 
-                    align = "center"))
-            ),
+                  h1("Downloads", align = "center")
+            )),
             
             fluidRow(
               box(width = 4,
+                  h3("CSV", align = "center"),
                   downloadBttn("monthly_data",
-                               label = "Download Monthly Data",
-                               style = "unite",
-                               color = "danger")),
-              box(width = 4,
+                               label = "Download Monthly County Data",
+                               style = "simple"),
                   downloadBttn("quarterly_data",
-                               label = "Download Quarterly Data",
-                               style = "unite",
-                               color = "danger")),
+                               label = "Download Quarterly County Data",
+                               style = "simple")),
               box(width = 4,
-                  downloadBttn("county_shapefile",
-                               label = "Download Shapefile",
-                               style = "unite", 
-                               color = "danger"))
+                  h3("Raster", align = "center"),
+                  downloadBttn("master_raster",
+                               label = "Download 1km Resolution Raster",
+                               style = "simple"),
+                  downloadBttn("master_raster_names",
+                               label = "Download Raster Layer Names", 
+                               style = "simple")),
+              box(width = 4,
+                  h3("Shapefile", align = "center"),
+                  downloadBttn("large_area_counties",
+                               label = "Download County Shapefile",
+                               style = "simple"))
             ))
     
     
@@ -783,6 +787,12 @@ server <- function(input, output) {
 
   ##### ABOUT END #####
 
+  # aodfips <- reactive({
+  #   this.fips <- input$aod_map_shape_click$id
+  #   return(this.fips)
+  # })
+  
+  
   output$aod_map <- renderLeaflet({
 
       this.aod.name <- "AOD_3_16"
@@ -807,6 +817,39 @@ server <- function(input, output) {
     sliderProxy("aod_map", this.aod.name, aod.pal, raster = master.raster)
     }
   })
+  
+  # observeEvent(input$aod_map_shape_click, {
+  #   if(input$sidebar == "aod") { #Optimize Dashboard speed by not observing outside of tab
+  #     click <- input$aod_map_shape_click
+  #     
+  #     fips <- click$id
+  #     
+  #     aod.proxy <- leafletProxy("aod_map")
+  #     
+  #     if(is.null(aodfips())) {
+  #       return()
+  #     }
+  #     print(aodfips())
+  #     if(aodfips() == "Highlighted") {
+  #       centroid <- st_centroid(large.area[12,])
+  #       aod.proxy %>%
+  #         setView(lng = centroid$LON, lat = centroid$LAT, zoom = 6) %>%
+  #         removeShape(layerId = "Highlighted")
+  #     } else {
+  #       centroid <- st_centroid(large.area[which(large.area$FIPS == fips),])
+  #       
+  #       county <- large.area$COUNTYNAME[which(large.area$FIPS == fips)]
+  #       
+  #       aod.proxy %>% setView(lng = centroid$LON, lat = centroid$LAT, zoom = 8) %>%
+  #         addPolygons(data=large.area[which(large.area$FIPS == fips),][1],
+  #                     color = "grey", layerId = "Highlighted",
+  #                     opacity = 0.05,
+  #                     label = paste(county, " County"),
+  #                     labelOptions = labelOptions(noHide = T))
+  #     }
+  #     aod.proxy
+  #   }
+  # })
 
   output$ndvi_map <- renderLeaflet({
     this.ndvi.name <- "NDVI_3_16"
@@ -847,14 +890,14 @@ server <- function(input, output) {
 
   observe({
     if (input$sidebar == "brf") {
-    in.date <- input$brf_dt
-    this.brf.name <- getLayerName(in.date, "BRDF")
-
-    in.pal <- input$brf_rad
-
-    brf.pal <- palFromLayer(this.brf.name, style = in.pal, colors = c("black", "white"), raster = master.raster)
-
-    brf.map <- dashMap(this.brf.name, brf.pal, raster = master.raster, area = large.area)
+      in.date <- input$brf_dt
+      this.brf.name <- getLayerName(in.date, "BRDF")
+      
+      in.pal <- input$brf_rad
+      
+      brf.pal <- palFromLayer(this.brf.name, style = in.pal, colors = c("black", "white"), raster = master.raster)
+      
+      sliderProxy("brf_map", this.brf.name, brf.pal, raster = master.raster)
     }
   })
 
@@ -1108,19 +1151,34 @@ server <- function(input, output) {
   #
 
   ##### PRECIPITATION END #####
+  
+  ##### DOWNLOADS START #####
+  
+  output$monthly_data <- downloadHandler(filename = "county_averages_monthly.csv", 
+                                         content = function(file){
+                                           write.csv(county.avgs, file)})
+  
+  output$quarterly_data <- downloadHandler(filename = "county_averages_quarterly.csv", 
+                                           content = function(file) {
+                                             file.copy("Data/county_averages_quarterly.csv", file)
+                                           })
+  
+  output$master_raster <- downloadHandler(filename = "Master_Raster.tif",
+                                          content = function(file){
+                                          file.copy("Data/Master_Raster.tif", file)})
+  
+  output$master_raster_names <- downloadHandler(filename = "Master_Raster_Names.csv",
+                                                content = function(file) {
+                                                  file.copy("Data/Master_Raster_Names.csv", file)
+                                                })
+  
+  #output$large_area_counties <- downloadHandler()
+
+  ##### DOWNLOADS END #####
+  
+  
 
 }
 
 shinyApp(ui, server)
-
-# x <- getValues(raster::mean(master.raster[[2:21]], na.rm = T)) ## All AOD
-# y <- getValues(raster::mean(master.raster[[145:164]], na.rm = T)) ## All PM2.5
-#
-#
-# plot(x, y)
-# cor.test(x,y) #-.1 --> .......
-#
-
-
-
 
