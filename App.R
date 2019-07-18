@@ -10,16 +10,12 @@ library(grDevices)
 library(plotly)
 library(data.table)
 library(raster)
-
+library(scales)
 ####### THIS WEEK ########
-### Fix up aesthetics --> look into how Eric did the formatting on his graph
-### Two county comparison option
-### Highlight to show county 
-### Cursor as bar on graph #2 to show all values at a given time
-### Option to hide county means for About graph --> possibly use that to incorporate comparisons
-### Fix point emissions and roads palettes
-### Downloads page --> county monthly csv, county shapefile, app code?
-
+### Cursor as bar on graph  to show all values at a given time
+### Fix point emissions and roads palettes & Home page color palette
+### Downloads page --> fix shapefile download
+### About Page --> Add content 
 
 
 ##### DATA LOADING START #####
@@ -355,8 +351,8 @@ ui <- dashboardPage(
              menuSubItem("Point Emissions", tabName = "pe"),
              menuSubItem("Roads", tabName = "roads")),
     menuItem("Meteorological Data", icon = icon("thermometer-half"),
-             menuSubItem("Temperature", tabName = "temp"),
-             menuSubItem("Precipitation", tabName = "precip")),
+             menuSubItem("Temperature", tabName = "temp")),
+             #menuSubItem("Precipitation", tabName = "precip")),
     menuItem("Downloads", icon = icon("download"), tabName = "downloads"))
   ),
 
@@ -368,29 +364,33 @@ ui <- dashboardPage(
 
     ##### HOME START #####
     tabItem(tabName = "home",
-            fluidRow(
-            box(width = 12,
-                h1("Home", align = "center"),
-                textOutput("hometext")
-                )),
-            fluidRow(
-            box(width = 4,
-                leafletOutput("countymap", height = mapheight)),
-              box(width = 8,
-                  selectInput("homevar", "Select Variable:",
-                              c("AOD" = "AOD",
-                                "NDVI" = "NDVI",
-                                "BRF" = "BRF",
-                                "PM2.5" = "PM25",
-                                "PM10" = "PM10",
-                                "Carbon Monoxide" = "CO",
-                                "Nitrogen Dioxide" = "NO2",
-                                "Ozone" = "Ozone",
-                                "Sulfur Dioxide" = "SO2",
-                                "Lead" = "Lead",
-                                "Avg. Temperature" = "Temp")),
-                  plotlyOutput("homeplot", height = 425)
-                  ))
+      fluidRow(
+        box(width = 12,
+            h1("Home", align = "center")
+      )),
+      fluidRow(
+        box(width = 4,
+            leafletOutput("homemap", height = mapheight),
+            checkboxGroupInput("homecheck", label = "", c("Show Mean" = "mean",
+                                                          "Rescale Data" = "rescale"),
+                               selected = c("mean"),
+                               width = '100%',
+                               inline = TRUE)),
+        box(width = 8,
+            selectizeInput("homevar", "Select Variables for Comparison:",
+                           c("AOD" = "AOD",
+                             "NDVI" = "NDVI",
+                             "BRF" = "BRF",
+                             "PM2.5" = "PM25",
+                             "PM10" = "PM10",
+                             "Carbon Monoxide" = "CO",
+                             "Nitrogen Dioxide" = "NO2",
+                             "Ozone" = "Ozone",
+                             "Sulfur Dioxide" = "SO2",
+                             "Lead" = "Lead",
+                             "Temperature" = "Temp"),
+                           options = list(maxItems = 7)),
+            plotlyOutput("homeplot", height = 425)))
     ),
     ##### HOME END #####
     ##### ABOUT START #####
@@ -401,23 +401,9 @@ ui <- dashboardPage(
                   textOutput("abouttext")
               )),
             fluidRow(
-              box(width = 4,
-                  leafletOutput("aboutmap", height = mapheight)),
-              box(width = 8,
-                  selectizeInput("aboutvar", "Select Variables for Comparison:",
-                              c("AOD" = "AOD",
-                                "NDVI" = "NDVI",
-                                "BRF" = "BRF",
-                                "PM2.5" = "PM25",
-                                "PM10" = "PM10",
-                                "Carbon Monoxide" = "CO",
-                                "Nitrogen Dioxide" = "NO2",
-                                "Ozone" = "Ozone",
-                                "Sulfur Dioxide" = "SO2",
-                                "Lead" = "Lead",
-                                "Temperature" = "Temp"),
-                              options = list(maxItems = 5)),
-                  plotlyOutput("aboutplot", height = 425)))
+              
+              h1("INSERT TEXT")
+            )
     ),
     ##### ABOUT END #####
 
@@ -545,13 +531,12 @@ server <- function(input, output) {
 
 
   ##### HOME START #####
-  testfips <- reactive({
-    this.fips <- input$countymap_shape_click$id
-    return(this.fips)
-  })
+  
+  abt.count <- reactiveValues(val = 0) #Create counter to track hold of last shape clicked
+  all.fips <- reactiveValues(fips = c())
   
   
-  output$countymap <- renderLeaflet({
+  output$homemap <- renderLeaflet({
     leaflet(large.area) %>%
       addProviderTiles(provider = "Hydda.Full") %>%
       leaflet::addPolygons(weight = 1,
@@ -566,200 +551,106 @@ server <- function(input, output) {
                              bringToFront = TRUE))
   })
   
-  # #Zoom to county centroid when clicked
-  observeEvent(input$countymap_shape_click, {
+  # Highlight clicked counties, unhighlight double clicked, zoom to center of all selected
+  observeEvent(input$homemap_shape_click, {
     if(input$sidebar == "home") { #Optimize Dashboard speed by not observing outside of tab
-      click <- input$countymap_shape_click
       
-      fips <- click$id
+      this.fips <- input$homemap_shape_click$id
       
-      home.proxy <- leafletProxy("countymap")
+      home.proxy <- leafletProxy("homemap")
       
-      if(is.null(testfips())) {
-        return()
-      }
-      
-      if(testfips() == "Highlighted") {
-        centroid <- st_centroid(large.area[12,])
-        home.proxy %>%
-          setView(lng = centroid$LON, lat = centroid$LAT, zoom = 6) %>%
-          removeShape(layerId = "Highlighted")
+      if(nchar(this.fips) <= 5) { #Make sure that selected layer not highlighted
+        abt.count$val <- abt.count$val + 1
+        all.fips$fips[abt.count$val] <- this.fips
+        
+        for(i in 1:length(all.fips$fips)) { #Highlight selected counties
+          home.proxy <- home.proxy %>%
+            addPolygons(data = large.area[which(large.area$FIPS %in% all.fips$fips[i]),][1],
+                        color = "red", layerId = paste("Highlighted", all.fips$fips[i]),
+                        label = paste(large.area$COUNTYNAME[which(large.area$FIPS %in% all.fips$fips[i])], " County"))
+        }
+        
       } else {
-        centroid <- st_centroid(large.area[which(large.area$FIPS == fips),])
+        high.fips <- substring(this.fips, first = 13) #Extract FIPS from Layer Id
+        home.proxy <- home.proxy %>%
+          removeShape(layerId = c(paste("Highlighted", all.fips$fips)))  #Clear highlighted shapes from proxy
         
-        county <- large.area$COUNTYNAME[which(large.area$FIPS == fips)]
+        all.fips$fips <- all.fips$fips[-which(all.fips$fips %in% high.fips)] #Remove fips from list of selected fips
         
-        home.proxy %>% setView(lng = centroid$LON, lat = centroid$LAT, zoom = 8) %>%
-          addPolygons(data=large.area[which(large.area$FIPS == fips),][1],
-                      color = "red", layerId = "Highlighted",
-                      label = paste(county, " County"),
-                      labelOptions = labelOptions(noHide = T))
+        abt.count$val <- abt.count$val - 1 #Adjust for removed value
+        
+        for(i in 1:length(all.fips$fips)) { #Highlight all remaining counties 
+          home.proxy <- home.proxy %>%
+            addPolygons(data = large.area[which(large.area$FIPS %in% all.fips$fips[i]),][1],
+                        color = "red", layerId = paste("Highlighted", all.fips$fips[i]),
+                        label = paste(large.area$COUNTYNAME[which(large.area$FIPS %in% all.fips$fips[i])], " County"))
+        }
       }
+      
+      view.lat <- mean(large.area$LAT[which(large.area$FIPS %in% all.fips$fips)])
+      view.lon <- mean(large.area$LON[which(large.area$FIPS %in% all.fips$fips)])
+      
+      home.proxy %>%
+        setView(lng = view.lon,
+                lat = view.lat, 
+                zoom = 7)
+      
     }
   })
-
-
+  
   output$homeplot <- renderPlotly({
-
-    ##### Transform averages into plotly friendly format
-    var <- input$homevar
-
-    var.data <- county.avgs[which(grepl(var, names(county.avgs)))]
-
-    p.data <- data.frame(var.data)
-    names(p.data)
-
-
-    p.trans <- transpose(p.data)
-    p.trans <- data.frame(sapply(p.trans, as.numeric))
-
-    months <- 1:12
-    years <- 2014:2018
-    dates <- c()
-
-    for(i in 1:length(years)) {
-      this.yr <- paste(months, "01", years[i], sep = "-")
-      dates <- c(dates, this.yr)
-
-    }
-    dates <- mdy(as.character(dates))
-
-    counties <- large.area$COUNTYNAME
-    names(p.trans) <- counties
     
-    if(is.null(testfips()) || testfips() == "Highlighted") {
-      selected.fips <- 0
-    } else {
-      selected.fips <- which(county.avgs$FIPS == testfips())
-    }
-
-    p <- plot_ly() %>% config(displayModeBar = F) 
-
-
-    for(i in 1:ncol(p.trans)) {
-      if(i != selected.fips) {
-      p <- add_trace(p,
-                     x = dates,
-                     y = p.trans[1:nrow(p.trans),i],
-                     type = "scatter",
-                     mode = "lines",
-                     opacity = 0.2,
-                     name = names(p.trans)[i],
-                     text= names(p.trans)[i])}
-      else {
-        p <- add_trace(p,
-                       x = dates,
-                       y = p.trans[1:nrow(p.trans),i],
-                       type = "scatter",
-                       mode = "line",
-                       opacity = 1,
-                       name = names(p.trans)[i],
-                       text= names(p.trans)[i])
-      }
-    }
-    p
-  })
-
-
-  ##### HOME END #####
-
-  ##### ABOUT START #####
-  aboutfips <- reactive({
-    this.fips <- input$aboutmap_shape_click$id
-    return(this.fips)
-  })
-
-
-  output$aboutmap <- renderLeaflet({
-    leaflet(large.area) %>%
-      addProviderTiles(provider = "Hydda.Full") %>%
-      leaflet::addPolygons(weight = 1,
-                           color = "gray",
-                           layerId = large.area$FIPS,
-                           fillOpacity = 0.2,
-                           label = large.area$COUNTYNAME,
-                           highlight = highlightOptions(
-                             weight = 2,
-                             color = "#666",
-                             fillOpacity = 0.7,
-                             bringToFront = TRUE))
-  })
-
-  # #Zoom to county centroid when clicked
-  observeEvent(input$aboutmap_shape_click, {
-    if(input$sidebar == "about") { #Optimize Dashboard speed by not observing outside of tab
-      click <- input$aboutmap_shape_click
-
-      fips <- click$id
-   
-      about.proxy <- leafletProxy("aboutmap")
-
-      if(is.null(aboutfips())) {
-        return()
-      }
-
-      if(aboutfips() == "Highlighted") {
-        centroid <- st_centroid(large.area[12,])
-        about.proxy %>%
-          setView(lng = centroid$LON, lat = centroid$LAT, zoom = 6) %>%
-          removeShape(layerId = "Highlighted")
-      } else {
-      centroid <- st_centroid(large.area[which(large.area$FIPS == fips),])
-
-      county <- large.area$COUNTYNAME[which(large.area$FIPS == fips)]
-
-      about.proxy %>% setView(lng = centroid$LON, lat = centroid$LAT, zoom = 8) %>%
-            addPolygons(data=large.area[which(large.area$FIPS == fips),][1],
-                    color = "red", layerId = "Highlighted",
-                    label = paste(county, " County"),
-                    labelOptions = labelOptions(noHide = T))
-      }
-    }
-  })
-
-
-
-  output$aboutplot <- renderPlotly({
     ##### Transform averages into plotly friendly format
-    vars <- input$aboutvar
+    vars <- input$homevar
+ 
     if(is.null(vars)){
       p <- plot_ly() %>% config(displayModeBar = F) %>%
         layout(legend = list(x = .5, y = 100, orientation = "h"))
       p
       return()
     }
-    #vars <- c("AOD", "NDVI", "PM25")
-    these.vars.avgs <- list()
 
+    these.vars.avgs <- list()
+    
     for(i in 1:length(vars)) {
       these.vars.avgs[[i]] <- var.avgs[which(grepl(vars[i], names(var.avgs)))]
+      
+      if ("rescale" %in% input$homecheck) {
+        these.vars.avgs[[i]] <- rescale(these.vars.avgs[[i]])
+      }
     }
+    
 
+    
     months <- 1:12
     years <- 2014:2018
     dates <- c()
-
+    
     for(i in 1:length(years)) {
       this.yr <- paste(months, "01", years[i], sep = "-")
       dates <- c(dates, this.yr)
-
+      
     }
     dates <- mdy(as.character(dates))
-
-    if(is.null(aboutfips()) || aboutfips() == "Highlighted") {
+    
+    highlighted <- all.fips$fips
+    
+    if(length(all.fips$fips == 0)) {
       selected.fips <- 0
-    } else {
-      selected.fips <- which(county.avgs$FIPS == aboutfips())
     }
+    
+    selected.fips <- which(county.avgs$FIPS %in% all.fips$fips)
 
-
-    colors <- c("#0026ff", "#ff0000", "#000000", 
+    colors <- c("#0026ff", "#ff0000", "#000000",
                 "#af03ff", "#ff00e1")
-
+    
+    home.checkbox <- ("mean" %in% input$homecheck)
+    
     p <- plot_ly() %>% config(displayModeBar = F) %>%
       layout(legend = list(x = .5, y = 100, orientation = "h"))
-
+    
     for(i in 1:length(these.vars.avgs)) {
+      if(home.checkbox == T) { # Add overall variable mean line
         p <- add_trace(p,
                        x = dates,
                        y = these.vars.avgs[[i]],
@@ -769,30 +660,44 @@ server <- function(input, output) {
                        line = list(dash = "dot", color = colors[i]),
                        name = paste("Average", vars[i], sep = " "),
                        text= paste("Average", vars[i], sep = " "))
-
-        if(selected.fips != 0) {
+      }
+      if(length(selected.fips) != 0) { # Add county variable mean line
+        for(j in 1:length(selected.fips)) {
+          if("rescale" %in% input$homecheck) {
           p <- add_trace(p,
                          x = dates,
-                         y = as.numeric(county.avgs[selected.fips,names(these.vars.avgs[[i]])]),
+                         y = rescale(as.numeric(county.avgs[selected.fips[j],names(these.vars.avgs[[i]])])),
                          type = "scatter",
                          mode = "lines",
                          opacity = .5,
-                         line = list(color = colors[i]),
-                         name = paste(county.avgs$Name[selected.fips], "County", vars[i], sep = " "),
-                         text= paste(county.avgs$Name[selected.fips], "County", vars[i], sep = " "))
-        }
+                         #line = list(color = colors[j]),
+                         name = paste(county.avgs$Name[selected.fips[j]], "County", vars[i], sep = " "),
+                         text= paste(county.avgs$Name[selected.fips[j]], "County", vars[i], sep = " "))
+          } else {
+            p <- add_trace(p,
+                           x = dates,
+                           y = as.numeric(county.avgs[selected.fips[j],names(these.vars.avgs[[i]])]),
+                           type = "scatter",
+                           mode = "lines",
+                           opacity = .5,
+                           #line = list(color = colors[j]),
+                           name = paste(county.avgs$Name[selected.fips[j]], "County", vars[i], sep = " "),
+                           text= paste(county.avgs$Name[selected.fips[j]], "County", vars[i], sep = " "))
+          }
+        }}
     }
     p
   })
+  
+
+  ##### HOME END #####
+
+  ##### ABOUT START #####
+  
 
   ##### ABOUT END #####
 
-  # aodfips <- reactive({
-  #   this.fips <- input$aod_map_shape_click$id
-  #   return(this.fips)
-  # })
-  
-  
+
   output$aod_map <- renderLeaflet({
 
       this.aod.name <- "AOD_3_16"
@@ -801,7 +706,8 @@ server <- function(input, output) {
 
       aod.pal <- palFromLayer(this.aod.name, style = in.pal, raster = master.raster)
 
-      dashMap(this.aod.name, aod.pal, raster = master.raster, area = large.area)
+      dashMap(this.aod.name, aod.pal, raster = master.raster, area = large.area,
+              layerId = large.area$FIPS)
 
   })
 
@@ -818,38 +724,14 @@ server <- function(input, output) {
     }
   })
   
-  # observeEvent(input$aod_map_shape_click, {
-  #   if(input$sidebar == "aod") { #Optimize Dashboard speed by not observing outside of tab
-  #     click <- input$aod_map_shape_click
-  #     
-  #     fips <- click$id
-  #     
-  #     aod.proxy <- leafletProxy("aod_map")
-  #     
-  #     if(is.null(aodfips())) {
-  #       return()
-  #     }
-  #     print(aodfips())
-  #     if(aodfips() == "Highlighted") {
-  #       centroid <- st_centroid(large.area[12,])
-  #       aod.proxy %>%
-  #         setView(lng = centroid$LON, lat = centroid$LAT, zoom = 6) %>%
-  #         removeShape(layerId = "Highlighted")
-  #     } else {
-  #       centroid <- st_centroid(large.area[which(large.area$FIPS == fips),])
-  #       
-  #       county <- large.area$COUNTYNAME[which(large.area$FIPS == fips)]
-  #       
-  #       aod.proxy %>% setView(lng = centroid$LON, lat = centroid$LAT, zoom = 8) %>%
-  #         addPolygons(data=large.area[which(large.area$FIPS == fips),][1],
-  #                     color = "grey", layerId = "Highlighted",
-  #                     opacity = 0.05,
-  #                     label = paste(county, " County"),
-  #                     labelOptions = labelOptions(noHide = T))
-  #     }
-  #     aod.proxy
-  #   }
-  # })
+  observeEvent(input$aod_map_shape_click, {
+    if(input$sidebar == "aod") { #Optimize Dashboard speed by not observing outside of tab
+      click <- input$aod_map_shape_click
+      
+      zoomMap("aod_map", click, large.area)
+      
+    }
+  })
 
   output$ndvi_map <- renderLeaflet({
     this.ndvi.name <- "NDVI_3_16"
@@ -858,7 +740,8 @@ server <- function(input, output) {
     ndvi.pal <- palFromLayer(this.ndvi.name, style = in.pal, colors = c("lightblue", "yellow", "lightgreen", "green", "darkgreen"),
                              raster = master.raster)
 
-    dashMap(this.ndvi.name, ndvi.pal, raster = master.raster, area = large.area)
+    dashMap(this.ndvi.name, ndvi.pal, raster = master.raster, area = large.area, 
+            layerId = large.area$FIPS)
 
   })
 
@@ -875,6 +758,14 @@ server <- function(input, output) {
     sliderProxy("ndvi_map", this.ndvi.name, ndvi.pal, raster = master.raster)
     }
   })
+  
+  observeEvent(input$ndvi_map_shape_click, {
+    if(input$sidebar == "ndvi") { 
+      click <- input$ndvi_map_shape_click
+      
+      zoomMap("ndvi_map", click, large.area)
+    }
+  })
 
   output$brf_map <- renderLeaflet({
 
@@ -884,7 +775,7 @@ server <- function(input, output) {
 
     brf.pal <- palFromLayer(this.brf.name, style = in.pal, colors = c("black", "white"), raster = master.raster)
 
-    brf.map <- dashMap(this.brf.name, brf.pal, raster = master.raster, area = large.area)
+    brf.map <- dashMap(this.brf.name, brf.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
 
@@ -900,27 +791,36 @@ server <- function(input, output) {
       sliderProxy("brf_map", this.brf.name, brf.pal, raster = master.raster)
     }
   })
+  
+  observeEvent(input$brf_map_shape_click, {
+    if(input$sidebar == "brf") { 
+      click <- input$brf_map_shape_click
+      
+      zoomMap("brf_map", click, large.area)
+    }
+  })
 
   output$grn_map <- renderLeaflet({
     grn.pal <- palFromLayer("grn_ndx", colors = c("white","lightgreen", "green", "darkgreen"), raster = master.raster)
-    grn.map <- dashMap("grn_ndx", grn.pal, raster = master.raster, area = large.area)
+    grn.map <- dashMap("grn_ndx", grn.pal, raster = master.raster, area = large.area,
+                       layerId = large.area$FIPS)
   })
 
   output$gry_map <- renderLeaflet({
     gry.pal <- palFromLayer("gry_ndx", colors = c("white", "lightgray", "gray", "darkgray", "black"), raster = master.raster)
-    gry.map <- dashMap("gry_ndx", gry.pal, raster = master.raster, area = large.area)
+    gry.map <- dashMap("gry_ndx", gry.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
   })
 
   output$blu_map <- renderLeaflet({
     blu.pal <- palFromLayer("blu_ndx", colors = c("white","lightblue", "blue", "darkblue"), raster = master.raster)
-    blu.map <- dashMap("blu_ndx", blu.pal, raster = master.raster, area = large.area)
+    blu.map <- dashMap("blu_ndx", blu.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
   })
 
   output$elevation_map <- renderLeaflet({
 
     elev.pal <- palFromLayer("Elev", raster = master.raster)
 
-    elevation.map <- dashMap("Elev", elev.pal, raster = master.raster, area = large.area)
+    elevation.map <- dashMap("Elev", elev.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
 
@@ -932,7 +832,7 @@ server <- function(input, output) {
 
     pm25.pal <- palFromLayer(this.pm25.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.pm25.name, pm25.pal, raster = master.raster, area = large.area)
+    dashMap(this.pm25.name, pm25.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
 
@@ -948,6 +848,14 @@ server <- function(input, output) {
     sliderProxy("pm25_map", this.pm25.name, pm25.pal, raster = master.raster)
     }
   })
+  
+  observeEvent(input$pm25_map_shape_click, {
+    if(input$sidebar == "pm25") { 
+      click <- input$pm25_map_shape_click
+      
+      zoomMap("pm25_map", click, large.area)
+    }
+  })
 
   output$pm10_map <- renderLeaflet({
 
@@ -957,7 +865,7 @@ server <- function(input, output) {
 
     pm10.pal <- palFromLayer(this.pm10.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.pm10.name, pm10.pal, raster = master.raster, area = large.area)
+    dashMap(this.pm10.name, pm10.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
 
@@ -973,6 +881,14 @@ server <- function(input, output) {
     sliderProxy("pm10_map", this.pm10.name, pm10.pal, raster = master.raster)
     }
   })
+  
+  observeEvent(input$pm10_map_shape_click, {
+    if(input$sidebar == "pm10") { 
+      click <- input$pm10_map_shape_click
+      
+      zoomMap("pm10_map", click, large.area)
+    }
+  })
 
   output$co_map <- renderLeaflet({
 
@@ -982,7 +898,7 @@ server <- function(input, output) {
 
     co.pal <- palFromLayer(this.co.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.co.name, co.pal, raster = master.raster, area = large.area)
+    dashMap(this.co.name, co.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
 
@@ -998,6 +914,14 @@ server <- function(input, output) {
       sliderProxy("co_map", this.co.name, co.pal, raster = master.raster)
     }
   })
+  
+  observeEvent(input$co_map_shape_click, {
+    if(input$sidebar == "co") { 
+      click <- input$co_map_shape_click
+      
+      zoomMap("co_map", click, large.area)
+    }
+  })
 
   output$nox_map <- renderLeaflet({
 
@@ -1007,7 +931,7 @@ server <- function(input, output) {
 
     nox.pal <- palFromLayer(this.nox.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.nox.name, nox.pal, raster = master.raster, area = large.area)
+    dashMap(this.nox.name, nox.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
 
@@ -1023,6 +947,15 @@ server <- function(input, output) {
     sliderProxy("nox_map", this.nox.name, nox.pal, raster = master.raster)
     }
   })
+  
+  observeEvent(input$nox_map_shape_click, {
+    if(input$sidebar == "nox") { 
+      click <- input$nox_map_shape_click
+      
+      zoomMap("nox_map", click, large.area)
+    }
+  })
+
 
   output$o3_map <- renderLeaflet({
 
@@ -1031,7 +964,7 @@ server <- function(input, output) {
 
     o3.pal <- palFromLayer(this.o3.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.o3.name, o3.pal, raster = master.raster, area = large.area)
+    dashMap(this.o3.name, o3.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
 
@@ -1047,6 +980,14 @@ server <- function(input, output) {
     sliderProxy("o3_map", this.o3.name, o3.pal, raster = master.raster)
     }
   })
+  
+  observeEvent(input$o3_map_shape_click, {
+    if(input$sidebar == "o3") { 
+      click <- input$o3_map_shape_click
+      
+      zoomMap("o3_map", click, large.area)
+    }
+  })
 
   output$so2_map <- renderLeaflet({
 
@@ -1056,7 +997,7 @@ server <- function(input, output) {
 
     so2.pal <- palFromLayer(this.so2.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.so2.name, so2.pal, raster = master.raster, area = large.area)
+    dashMap(this.so2.name, so2.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
 
@@ -1074,6 +1015,14 @@ server <- function(input, output) {
 
   })
 
+  observeEvent(input$so2_map_shape_click, {
+    if(input$sidebar == "so2") { 
+      click <- input$so2_map_shape_click
+      
+      zoomMap("so2_map", click, large.area)
+    }
+  })
+  
   output$pb_map <- renderLeaflet({
 
     this.pb.name <- "Lead_3_16"
@@ -1082,7 +1031,7 @@ server <- function(input, output) {
 
     pb.pal <- palFromLayer(this.pb.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.pb.name, pb.pal, raster = master.raster, area = large.area)
+    dashMap(this.pb.name, pb.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
 
@@ -1099,18 +1048,25 @@ server <- function(input, output) {
       sliderProxy("pb_map", this.pb.name, pb.pal, raster = master.raster)
 
     }
-
+  })
+  
+  observeEvent(input$pb_map_shape_click, {
+    if(input$sidebar == "pb") { 
+      click <- input$pb_map_shape_click
+      
+      zoomMap("pb_map", click, large.area)
+    }
   })
 
   output$pe_map <- renderLeaflet({
 
     pe.pal <- palFromLayer("PECount", raster = master.raster)
-    pe.map <- dashMap("PECount", pe.pal, raster = master.raster, area = large.area)
+    pe.map <- dashMap("PECount", pe.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
 
   output$roads_map <- renderLeaflet({
-    roads.map <- dashMap("RdDnsty", roads.pal, raster = master.raster, area = large.area)
+    roads.map <- dashMap("RdDnsty", roads.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
   })
 
   output$temp_map <- renderLeaflet({
@@ -1120,7 +1076,7 @@ server <- function(input, output) {
 
     temp.pal <- palFromLayer(this.temp.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.temp.name, temp.pal, raster = master.raster, area = large.area)
+    dashMap(this.temp.name, temp.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
   })
 
   observe({
@@ -1135,6 +1091,14 @@ server <- function(input, output) {
       sliderProxy("temp_map", this.temp.name, temp.pal, raster = master.raster)
     }
   })
+  
+  observeEvent(input$temp_map_shape_click, {
+    if(input$sidebar == "temp") { 
+      click <- input$temp_map_shape_click
+      
+      zoomMap("temp_map", click, large.area)
+    }
+  })
 
   ##### PRECIPITATION START #####
 
@@ -1146,7 +1110,7 @@ server <- function(input, output) {
   #
   #   precip.pal <- palFromLayer(this.precip.name, raster = master.raster)
   #
-  #   precip.map <- dashMap(this.precip.name, precip.pal, raster = master.raster, area = large.area)
+  #   precip.map <- dashMap(this.precip.name, precip.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
   # })
   #
 

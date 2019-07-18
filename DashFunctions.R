@@ -66,7 +66,7 @@ getLayerName <- function(in.date, variable) {
 }
 
 ##### Generate Leaflet Map 
-dashMap <- function(layername, layerpal, raster, area) {
+dashMap <- function(layername, layerpal, raster, area, layerId) {
   
     leaflet(layername) %>%
     addProviderTiles("Hydda.Full") %>%
@@ -77,12 +77,15 @@ dashMap <- function(layername, layerpal, raster, area) {
                 fillOpacity  = 0.01, 
                 stroke = TRUE,
                 opacity = 1,
+                layerId = layerId,
                 weight = 1,
                 highlight = highlightOptions(
                   weight = 2, 
                   color = "gray", 
-                  fillOpacity = 0.05),
-                popup = paste(area["COUNTYNAME"][[1]], "County"))
+                  fillOpacity = 0.05)
+                #,
+                #popup = paste(area["COUNTYNAME"][[1]], "County")
+                )
 }
 
 ##### For use in observe function with slider
@@ -95,6 +98,32 @@ sliderProxy <- function(mapname, layername, layerpal, raster) {
     leaflet::addLegend(pal = layerpal, values = values(raster[[layername]]), title = gsub("_.*","",layername))
 }
 
+
+##### Zoom on click 
+# Proxy: Leaflet map name
+# Click: Click input
+# Area: Polygons
+zoomMap <- function(proxy, click, area) {
+  this.proxy <- leafletProxy(proxy)
+  fips <- click$id
+  county <- area$COUNTYNAME[which(area$FIPS == fips)]
+  
+  if(fips != "Highlighted") {
+    this.proxy %>% 
+      setView(lng = click$lng, lat = click$lat, zoom = 8) %>%
+      addPolygons(data=area[which(area$FIPS == fips),][1],
+                  color = "grey", layerId = "Highlighted",
+                  opacity = 0.05,
+                  label = paste(county, " County"),
+                  labelOptions = labelOptions(noHide = T))}
+  else {
+    this.proxy %>%
+      removeShape(layerId = "Highlighted") %>%
+      setView(lng = area$LON[12],
+              lat = area$LAT[12],
+              zoom = 7)
+  }
+}
 
 #Creates palette
 #qtr: Palette covers single quarter
