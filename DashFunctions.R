@@ -89,9 +89,8 @@ dashMap <- function(layername, layerpal, raster, area, layerId, rasterOpacity = 
       dMap <- dMap %>%
         addCircles(lng = EPApoints$Longitude[EPApoints$Var == VarName],
                  lat = EPApoints$Latitude[EPApoints$Var == VarName],
-                 radius = 5, color = "black", opacity = 0.9)
+                 radius = 2, color = "black", opacity = 0.9)
     }
-    
     
     dMap
 }
