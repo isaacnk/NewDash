@@ -13,8 +13,6 @@ library(raster)
 library(scales)
 
 ####### TO DO ########
-### Home page color palette
-### Downloads page --> fix shapefile download
 ### About Page --> Add content 
 
 
@@ -376,9 +374,9 @@ ui <- dashboardPage(
                                inline = TRUE)),
         box(width = 8,
             selectizeInput("homevar", "Select Variables for Comparison:",
-                           c("AOD" = "AOD",
-                             "NDVI" = "NDVI",
-                             "BRF" = "BRF",
+                           c("Aerosol Optical Depth" = "AOD",
+                             "Normalized Difference Vegetation Index" = "NDVI",
+                             "Bidirectional Reflectance Factor" = "BRF",
                              "PM2.5" = "PM25",
                              "PM10" = "PM10",
                              "Carbon Monoxide" = "CO",
@@ -399,9 +397,23 @@ ui <- dashboardPage(
                   textOutput("abouttext")
               )),
             fluidRow(
-              
-              h1("INSERT TEXT")
-            )
+              box(width = 6,
+                h1("Overview", align = "center"),
+                p("Open Air Chicago is an interactive dashboard providing information on air quality for the greater Chicagoland area including Milwaukee. It includes direct measures of air quality as well as variables known to affect or relate to these variables. Each of the 15 examined variables has an individual page with a variable description, source information, and interactive visualization. Additionally, the “Home” tab offers the option to explore broader trends within the data for a single variable or among several variables both at the broader Chicagoland scale and the individual county level. All data used to generate the graphs and maps on the dashboard are available for access on the “Downloads” tab.")
+                ),
+              box(width = 6,
+                h1("Objectives", align = "center"),
+                p("The primary goal of this dashboard is to provide both researchers and the public at large with clean, free, and easily accessible data for all things air quality. While all data used in the dashboard is technically available for free online, the numerous formats, sources, and options provide for an unwelcoming landscape. By streamlining the process through which the data is accessed, the hope is to enable more people to spend more time actually analyzing the data and working to improve air quality. Additionally, Open Air Chicago hopes to do this by offering data visualization options to explore individual variable data as well as relationships between variables over time.")
+            )),
+            fluidRow(
+              box(width = 6,
+                h1("Data", align = "center"),
+                p("All data used to create the dashboard is available online free of charge. Sources include the Environmental Protection Agency (EPA), National Aeronautics and Space Administration (NASA),  National Oceanic and Atmospheric Association (NOAA), United States Geological Survey (USGS), and OpenStreetMap. Specific sourcing information is available on individual dashboard pages. County-level aggregates for all variables are available for download at a monthly and quarterly temporal resolution as CSV files on the “Downloads” tab. Also available on the “Downloads” tab is a GeoTiff raster file containing all of the 1km resolution gridded data.")
+              ),
+              box(width = 6,
+                  h1("Methodology", align = "center"),
+                  p("In addition to differing in source and format, the raw data also exists at a variety of spatial and temporal resolutions. All data was aggregated to a standard, 1km resolution grid at both monthly and quarterly intervals. Due to data availability, particularly with NASA’s remote-sensed Aerosol Optical Depth, individual variable pages provide visualizations of the quarterly aggregates to maximize coverage. For data not originally provided at a 1km resolution, unless otherwise noted on the “Source” tab on each variable page, the value assigned to each 1km cell is the mean of all measured values within it.")
+            ))
     ),
     ##### ABOUT END #####
 
@@ -533,10 +545,10 @@ server <- function(input, output) {
   abt.count <- reactiveValues(val = 0) #Create counter to track hold of last shape clicked
   all.fips <- reactiveValues(fips = c())
   
-  
   output$homemap <- renderLeaflet({
     leaflet(large.area) %>%
       addProviderTiles(provider = "Hydda.Full") %>%
+      setView(lat = "41.97736", lng = "-87.62255", zoom = 7) %>% 
       leaflet::addPolygons(weight = 1,
                            color = "gray",
                            layerId = large.area$FIPS,
@@ -588,6 +600,11 @@ server <- function(input, output) {
       view.lat <- mean(large.area$LAT[which(large.area$FIPS %in% all.fips$fips)])
       view.lon <- mean(large.area$LON[which(large.area$FIPS %in% all.fips$fips)])
       
+      if(length(all.fips$fips) == 0) {
+        view.lat <- 41.97736
+        view.lon <- -87.62255
+      }
+      
       home.proxy %>%
         setView(lng = view.lon,
                 lat = view.lat, 
@@ -638,8 +655,13 @@ server <- function(input, output) {
     
     selected.fips <- which(county.avgs$FIPS %in% all.fips$fips)
 
-    colors <- c("#0026ff", "#ff0000", "#000000",
-                "#af03ff", "#ff00e1")
+    blues <- c("#033682", "#0356a3", "#0083d9", "#66ccff", "#c9e8ff") 
+    reds <- c("#9c1500", "#f52302", "#ff6e57", "#ff9a8a", "#ffc8bf") 
+    greens <- c("#165422", "#0b9926", "#14ff41", "#91faa5", "#d6ffde") 
+    yellows <- c("#8f8a00", "#d4cc04", "#faf005", "#f5f190", "#faf8c3")
+    grays <- c("#343d46", "#4f5b66", "#65737e", "#a7adba", "#c0c5ce") 
+    
+    colors <- data.frame(blues, reds, greens, yellows, grays)
     
     home.checkbox <- ("mean" %in% input$homecheck)
     
@@ -654,7 +676,7 @@ server <- function(input, output) {
                        type = "scatter",
                        mode = "lines",
                        opacity = 1,
-                       line = list(dash = "dot", color = colors[i]),
+                       line = list(dash = "dot", color = colors[1,i]),
                        name = paste("Average", vars[i], sep = " "),
                        text= paste("Average", vars[i], sep = " "))
       }
@@ -667,7 +689,7 @@ server <- function(input, output) {
                          type = "scatter",
                          mode = "lines",
                          opacity = .5,
-                         #line = list(color = colors[j]),
+                         line = list(color = colors[j+1,i]),
                          name = paste(county.avgs$Name[selected.fips[j]], "County", vars[i], sep = " "),
                          text= paste(county.avgs$Name[selected.fips[j]], "County", vars[i], sep = " "))
           } else {
@@ -677,7 +699,7 @@ server <- function(input, output) {
                            type = "scatter",
                            mode = "lines",
                            opacity = .5,
-                           #line = list(color = colors[j]),
+                           line = list(color = colors[j+1, i]),
                            name = paste(county.avgs$Name[selected.fips[j]], "County", vars[i], sep = " "),
                            text= paste(county.avgs$Name[selected.fips[j]], "County", vars[i], sep = " "))
           }
