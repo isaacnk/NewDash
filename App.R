@@ -11,9 +11,9 @@ library(plotly)
 library(data.table)
 library(raster)
 library(scales)
-####### THIS WEEK ########
-### Cursor as bar on graph  to show all values at a given time
-### Fix point emissions and roads palettes & Home page color palette
+
+####### TO DO ########
+### Home page color palette
 ### Downloads page --> fix shapefile download
 ### About Page --> Add content 
 
@@ -34,6 +34,8 @@ county.avgs <- read.csv("Data/county_averages_monthly.csv")
 county.avgs$Name <- as.character(county.avgs$Name)
 
 var.avgs <- colMeans(county.avgs[,4:ncol(county.avgs)], na.rm = T)
+
+epa.points <- st_read("Data/EPA_Points")
 
  ##### DATA LOADING END #####
 
@@ -172,16 +174,12 @@ temp.source <- descriptions$Source[descriptions["Variable"] == "Temperature"]
 
 ##### TEMP END #####
 
-##### COLOR PALETTE START #####
+##### PLOT ADJUSTMENT START #####
 
-pe.breaks <- seq(from = 0, to = 8, 1) #Figure out way to incorporate the 1 place w 15 emissions sources
-pe.pal <- colorNumeric(c("green", "yellow", "orange", "darkorange",
-                         "red", "red4", "purple", "purple4"), pe.breaks, na.color = "transparent")
+master.raster$PECount[which(getValues(master.raster$PECount) == 0)] <- NA ### Needed for plotting; raster error when try to write new file
+master.raster$RdDnsty[which(getValues(master.raster$RdDnsty) == 0)] <- NA
 
-roads.breaks <- seq(from = 0, to = 0.03, 0.005)
-roads.pal <- colorNumeric(c("green", "yellow", "orange", "red"), roads.breaks, na.color = "transparent")
-
-##### COLOR PALETTE END #####
+##### PLOT ADJUSTMENT END #####
 
 ##### VARIABLE END #####
 
@@ -620,7 +618,6 @@ server <- function(input, output) {
       }
     }
     
-
     
     months <- 1:12
     years <- 2014:2018
@@ -805,17 +802,47 @@ server <- function(input, output) {
     grn.map <- dashMap("grn_ndx", grn.pal, raster = master.raster, area = large.area,
                        layerId = large.area$FIPS)
   })
+  
+  observeEvent(input$grn_map_shape_click, {
+    if(input$sidebar == "landcover") { #Optimize Dashboard speed by not observing outside of tab
+      click <- input$grn_map_shape_click
+      
+      zoomMap("grn_map", click, large.area)
+      
+    }
+  })
+  
 
   output$gry_map <- renderLeaflet({
     gry.pal <- palFromLayer("gry_ndx", colors = c("white", "lightgray", "gray", "darkgray", "black"), raster = master.raster)
     gry.map <- dashMap("gry_ndx", gry.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
   })
+  
+  observeEvent(input$gry_map_shape_click, {
+    if(input$sidebar == "landcover") { #Optimize Dashboard speed by not observing outside of tab
+      click <- input$gry_map_shape_click
+      
+      zoomMap("gry_map", click, large.area)
+      
+    }
+  })
+  
 
   output$blu_map <- renderLeaflet({
     blu.pal <- palFromLayer("blu_ndx", colors = c("white","lightblue", "blue", "darkblue"), raster = master.raster)
     blu.map <- dashMap("blu_ndx", blu.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
   })
-
+  
+  observeEvent(input$blu_map_shape_click, {
+    if(input$sidebar == "landcover") { #Optimize Dashboard speed by not observing outside of tab
+      click <- input$blu_map_shape_click
+      
+      zoomMap("blu_map", click, large.area)
+      
+    }
+  })
+  
+  
   output$elevation_map <- renderLeaflet({
 
     elev.pal <- palFromLayer("Elev", raster = master.raster)
@@ -823,6 +850,17 @@ server <- function(input, output) {
     elevation.map <- dashMap("Elev", elev.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
 
   })
+  
+  
+  observeEvent(input$elevation_map_shape_click, {
+    if(input$sidebar == "elevation") { #Optimize Dashboard speed by not observing outside of tab
+      click <- input$elevation_map_shape_click
+      
+      zoomMap("elevation_map", click, large.area)
+      
+    }
+  })
+  
 
   output$pm25_map <- renderLeaflet({
 
@@ -832,8 +870,14 @@ server <- function(input, output) {
 
     pm25.pal <- palFromLayer(this.pm25.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.pm25.name, pm25.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
-
+    dashMap(this.pm25.name, pm25.pal, 
+            raster = master.raster, area = large.area, 
+            layerId = large.area$FIPS, EPApoints = epa.points, 
+            VarName = "PM25")
+    
+    
+    
+    
   })
 
   observe({
@@ -852,8 +896,8 @@ server <- function(input, output) {
   observeEvent(input$pm25_map_shape_click, {
     if(input$sidebar == "pm25") { 
       click <- input$pm25_map_shape_click
-      
-      zoomMap("pm25_map", click, large.area)
+      if(!is.null(click$id)) {
+      zoomMap("pm25_map", click, large.area)}
     }
   })
 
@@ -865,7 +909,9 @@ server <- function(input, output) {
 
     pm10.pal <- palFromLayer(this.pm10.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.pm10.name, pm10.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
+    dashMap(this.pm10.name, pm10.pal, raster = master.raster, 
+            area = large.area, layerId = large.area$FIPS,
+            EPApoints = epa.points, VarName = "PM10")
 
   })
 
@@ -885,8 +931,8 @@ server <- function(input, output) {
   observeEvent(input$pm10_map_shape_click, {
     if(input$sidebar == "pm10") { 
       click <- input$pm10_map_shape_click
-      
-      zoomMap("pm10_map", click, large.area)
+      if(!is.null(click$id)) {
+      zoomMap("pm10_map", click, large.area)}
     }
   })
 
@@ -898,7 +944,9 @@ server <- function(input, output) {
 
     co.pal <- palFromLayer(this.co.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.co.name, co.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
+    dashMap(this.co.name, co.pal, raster = master.raster, 
+            area = large.area, layerId = large.area$FIPS,
+            EPApoints = epa.points, VarName = "CO")
 
   })
 
@@ -918,8 +966,8 @@ server <- function(input, output) {
   observeEvent(input$co_map_shape_click, {
     if(input$sidebar == "co") { 
       click <- input$co_map_shape_click
-      
-      zoomMap("co_map", click, large.area)
+      if(!is.null(click$id)) {
+      zoomMap("co_map", click, large.area)}
     }
   })
 
@@ -931,7 +979,9 @@ server <- function(input, output) {
 
     nox.pal <- palFromLayer(this.nox.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.nox.name, nox.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
+    dashMap(this.nox.name, nox.pal, raster = master.raster, 
+            area = large.area, layerId = large.area$FIPS,
+            EPApoints = epa.points, VarName = "NO2")
 
   })
 
@@ -951,8 +1001,8 @@ server <- function(input, output) {
   observeEvent(input$nox_map_shape_click, {
     if(input$sidebar == "nox") { 
       click <- input$nox_map_shape_click
-      
-      zoomMap("nox_map", click, large.area)
+      if(!is.null(click$id)) {
+      zoomMap("nox_map", click, large.area)}
     }
   })
 
@@ -964,7 +1014,9 @@ server <- function(input, output) {
 
     o3.pal <- palFromLayer(this.o3.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.o3.name, o3.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
+    dashMap(this.o3.name, o3.pal, raster = master.raster, 
+            area = large.area, layerId = large.area$FIPS,
+            EPApoints = epa.points, VarName = "Ozone")
 
   })
 
@@ -984,8 +1036,8 @@ server <- function(input, output) {
   observeEvent(input$o3_map_shape_click, {
     if(input$sidebar == "o3") { 
       click <- input$o3_map_shape_click
-      
-      zoomMap("o3_map", click, large.area)
+      if(!is.null(click$id)) {
+      zoomMap("o3_map", click, large.area)}
     }
   })
 
@@ -997,7 +1049,9 @@ server <- function(input, output) {
 
     so2.pal <- palFromLayer(this.so2.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.so2.name, so2.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
+    dashMap(this.so2.name, so2.pal, raster = master.raster, 
+            area = large.area, layerId = large.area$FIPS,
+            EPApoints = epa.points, VarName = "SO2")
 
   })
 
@@ -1018,8 +1072,8 @@ server <- function(input, output) {
   observeEvent(input$so2_map_shape_click, {
     if(input$sidebar == "so2") { 
       click <- input$so2_map_shape_click
-      
-      zoomMap("so2_map", click, large.area)
+      if(!is.null(click$id)) {
+      zoomMap("so2_map", click, large.area)}
     }
   })
   
@@ -1031,7 +1085,9 @@ server <- function(input, output) {
 
     pb.pal <- palFromLayer(this.pb.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.pb.name, pb.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
+    dashMap(this.pb.name, pb.pal, raster = master.raster, 
+            area = large.area, layerId = large.area$FIPS,
+            EPApoints = epa.points, VarName = "Lead")
 
   })
 
@@ -1053,21 +1109,51 @@ server <- function(input, output) {
   observeEvent(input$pb_map_shape_click, {
     if(input$sidebar == "pb") { 
       click <- input$pb_map_shape_click
-      
-      zoomMap("pb_map", click, large.area)
+      if(!is.null(click$id)) {
+      zoomMap("pb_map", click, large.area)}
     }
   })
 
   output$pe_map <- renderLeaflet({
 
-    pe.pal <- palFromLayer("PECount", raster = master.raster)
-    pe.map <- dashMap("PECount", pe.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
+    pe.pal <- palFromLayer("PECount", colors = c("darkgreen", "yellow2", "darkorange", "darkred"), raster = master.raster)
+    pe.map <- dashMap("PECount", pe.pal, raster = master.raster, 
+                      area = large.area, layerId = large.area$FIPS,
+                      rasterOpacity = 0.7)
 
   })
+  
+  
+  observeEvent(input$pe_map_shape_click, {
+    if(input$sidebar == "pe") { #Optimize Dashboard speed by not observing outside of tab
+      click <- input$pe_map_shape_click
+      
+      zoomMap("pe_map", click, large.area)
+      
+    }
+  })
+  
 
   output$roads_map <- renderLeaflet({
-    roads.map <- dashMap("RdDnsty", roads.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
+    roads.pal <- palFromLayer("RdDnsty", colors = c("darkgreen", "yellow2", "darkorange", "darkred"),
+                              raster = master.raster)
+    roads.map <- dashMap("RdDnsty", roads.pal, 
+                         raster = master.raster, 
+                         area = large.area, 
+                         layerId = large.area$FIPS,
+                         rasterOpacity = 0.5)
   })
+  
+  
+  observeEvent(input$roads_map_shape_click, {
+    if(input$sidebar == "roads") { #Optimize Dashboard speed by not observing outside of tab
+      click <- input$roads_map_shape_click
+      
+      zoomMap("roads_map", click, large.area)
+      
+    }
+  })
+  
 
   output$temp_map <- renderLeaflet({
     this.temp.name <- "Temp_3_16"
@@ -1076,7 +1162,9 @@ server <- function(input, output) {
 
     temp.pal <- palFromLayer(this.temp.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.temp.name, temp.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
+    dashMap(this.temp.name, temp.pal, raster = master.raster, 
+            area = large.area, layerId = large.area$FIPS,
+            EPApoints = epa.points, VarName = "Temp")
   })
 
   observe({
@@ -1095,8 +1183,8 @@ server <- function(input, output) {
   observeEvent(input$temp_map_shape_click, {
     if(input$sidebar == "temp") { 
       click <- input$temp_map_shape_click
-      
-      zoomMap("temp_map", click, large.area)
+      if(!is.null(click$id)) {
+      zoomMap("temp_map", click, large.area)}
     }
   })
 
@@ -1135,8 +1223,30 @@ server <- function(input, output) {
                                                 content = function(file) {
                                                   file.copy("Data/Master_Raster_Names.csv", file)
                                                 })
+  ### Source shapefile zip download code:
+  ### https://stackoverflow.com/questions/41707760/download-a-shape-file-from-shiny
   
-  #output$large_area_counties <- downloadHandler()
+  output$large_area_counties <- downloadHandler(
+    filename = "LargeAreaCounties.zip",
+    content = function(file) {
+      a <- tempdir()
+      st_write(large.area, dsn = a, "LargeAreaCounties", driver = "ESRI Shapefile",
+               update = TRUE, delete_layer = T)
+      
+      zip.path <- file.path(a, "large.area.zip")
+      shp.files <- list.files(a,
+                              "LargeAreaCounties", 
+                              full.names = T)
+      zip.cmd <- paste("zip -j",
+                       zip.path,
+                       paste(shp.files, collapse = " "))
+      
+      system(zip.cmd)
+      file.copy(zip.path, file)
+      file.remove(zip.path, shp.files)
+
+    }
+  )
 
   ##### DOWNLOADS END #####
   

@@ -66,11 +66,12 @@ getLayerName <- function(in.date, variable) {
 }
 
 ##### Generate Leaflet Map 
-dashMap <- function(layername, layerpal, raster, area, layerId) {
+dashMap <- function(layername, layerpal, raster, area, layerId, rasterOpacity = 0.4,
+                    EPApoints = NULL, VarName = NULL) {
   
-    leaflet(layername) %>%
+    dMap <- leaflet(layername) %>%
     addProviderTiles("Hydda.Full") %>%
-    addRasterImage(raster[[layername]], opacity = 0.4, colors = layerpal) %>%
+    addRasterImage(raster[[layername]], opacity = rasterOpacity, colors = layerpal) %>%
     leaflet::addLegend(pal = layerpal, values = values(raster[[layername]]), title = gsub("_.*","",layername)) %>%
     addPolygons(data = area, 
                 color = "darkslategray",
@@ -82,10 +83,17 @@ dashMap <- function(layername, layerpal, raster, area, layerId) {
                 highlight = highlightOptions(
                   weight = 2, 
                   color = "gray", 
-                  fillOpacity = 0.05)
-                #,
-                #popup = paste(area["COUNTYNAME"][[1]], "County")
-                )
+                  fillOpacity = 0.05))
+    
+    if (!is.null(EPApoints)) {
+      dMap <- dMap %>%
+        addCircles(lng = EPApoints$Longitude[EPApoints$Var == VarName],
+                 lat = EPApoints$Latitude[EPApoints$Var == VarName],
+                 radius = 5, color = "black", opacity = 0.9)
+    }
+    
+    
+    dMap
 }
 
 ##### For use in observe function with slider
