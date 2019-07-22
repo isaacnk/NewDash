@@ -13,16 +13,16 @@ library(raster)
 library(scales)
 
 ####### TO DO ########
-### About Page --> Add content 
-
+### Find reliable precip data --> include
+### Barometric pressure --> added to home, add to Raster and create page for it
 
 ##### DATA LOADING START #####
 source("DashFunctions.R")
 
 master.raster <- stack("Data/Master_Raster.tif")
 raster.names <- read.csv("Data/Master_Raster_Names.csv")
-names(master.raster) <- raster.names$names.master.grid.
 
+names(master.raster) <- raster.names$x
 large.area <- st_read("Data/LargeAreaCounties")
 large.area$COUNTYNAME <- as.character(large.area$COUNTYNAME)
 
@@ -34,7 +34,6 @@ county.avgs$Name <- as.character(county.avgs$Name)
 var.avgs <- colMeans(county.avgs[,4:ncol(county.avgs)], na.rm = T)
 
 epa.points <- st_read("Data/EPA_Points")
-
  ##### DATA LOADING END #####
 
 ##### VARIABLE START #####
@@ -111,10 +110,10 @@ co.source <- descriptions$Source[descriptions["Variable"] == "CO"]
 
 ##### NO2 START #####
 
-nox.tabname <- "nox"
-nox.name <- "Nitrogen Dioxide"
-nox.description <- descriptions$Description[descriptions["Variable"] == "NO2"]
-nox.source <-  descriptions$Source[descriptions["Variable"] == "NO2"]
+no2.tabname <- "no2"
+no2.name <- "Nitrogen Dioxide"
+no2.description <- descriptions$Description[descriptions["Variable"] == "NO2"]
+no2.source <-  descriptions$Source[descriptions["Variable"] == "NO2"]
 
 ##### NO2 END #####
 
@@ -171,6 +170,13 @@ temp.description <- descriptions$Description[descriptions["Variable"] == "Temper
 temp.source <- descriptions$Source[descriptions["Variable"] == "Temperature"]
 
 ##### TEMP END #####
+
+##### PRESSURE START #####
+
+pressure.tabname <- "pressure"
+pressure.name <- "Barometric Pressure"
+pressure.description <- descriptions$Description[descriptions["Variable"] == "Pressure"]
+pressure.source <- descriptions$Source[descriptions["Variable"] == "Pressure"]
 
 ##### PLOT ADJUSTMENT START #####
 
@@ -339,7 +345,7 @@ ui <- dashboardPage(
              menuSubItem("PM2.5", tabName = "pm25"),
              menuSubItem("PM10", tabName = "pm10"),
              menuSubItem("Carbon Monoxide", tabName = "co"),
-             menuSubItem("Nitrogen Dioxide", tabName = "nox"),
+             menuSubItem("Nitrogen Dioxide", tabName = "no2"),
              menuSubItem("Ozone", tabName = "o3"),
              menuSubItem("Sulfur Dioxide", tabName = "so2"),
              menuSubItem("Lead", tabName = "pb")),
@@ -347,7 +353,8 @@ ui <- dashboardPage(
              menuSubItem("Point Emissions", tabName = "pe"),
              menuSubItem("Roads", tabName = "roads")),
     menuItem("Meteorological Data", icon = icon("thermometer-half"),
-             menuSubItem("Temperature", tabName = "temp")),
+             menuSubItem("Temperature", tabName = "temp"),
+             menuSubItem("Pressure", tabName = "pressure")),
              #menuSubItem("Precipitation", tabName = "precip")),
     menuItem("Downloads", icon = icon("download"), tabName = "downloads"))
   ),
@@ -384,7 +391,8 @@ ui <- dashboardPage(
                              "Ozone" = "Ozone",
                              "Sulfur Dioxide" = "SO2",
                              "Lead" = "Lead",
-                             "Temperature" = "Temp"),
+                             "Temperature" = "Temp",
+                             "Barometric Pressure" = "Pressure"),
                            options = list(maxItems = 7)),
             plotlyOutput("homeplot", height = 425)))
     ),
@@ -399,7 +407,7 @@ ui <- dashboardPage(
             fluidRow(
               box(width = 6,
                 h1("Overview", align = "center", style = "color: #80ceff"),
-                p("Open Air Chicago is an interactive dashboard providing information on air quality for the greater Chicagoland area including Milwaukee. It includes direct measures of air quality as well as variables known to affect or relate to these variables. Each of the 15 examined variables has an individual page with a variable description, source information, and interactive visualization. Additionally, the “Home” tab offers the option to explore broader trends within the data for a single variable or among several variables both at the broader Chicagoland scale and the individual county level. All data used to generate the graphs and maps on the dashboard are available for access on the “Downloads” tab.")
+                p("Open Air Chicago is an interactive dashboard providing information on air quality for the greater Chicagoland area including Milwaukee. It includes direct measures of air quality as well as variables known to affect or relate to these variables. Each of the 16 examined variables has an individual page with a variable description, source information, and interactive visualization. Additionally, the “Home” tab offers the option to explore broader trends within the data for a single variable or among several variables both at the broader Chicagoland scale and the individual county level. All data used to generate the graphs and maps on the dashboard are available for access on the “Downloads” tab.")
                 ),
               box(width = 6,
                 h1("Objectives", align = "center", style = "color: #c71414"),
@@ -412,7 +420,7 @@ ui <- dashboardPage(
               ),
               box(width = 6,
                   h1("Methodology", align = "center",  style = "color: #80ceff"),
-                  p("In addition to differing in source and format, the raw data also exists at a variety of spatial and temporal resolutions. All data was aggregated to a standard, 1km resolution grid at both monthly and quarterly intervals. Due to data availability, particularly with NASA’s remote-sensed Aerosol Optical Depth, individual variable pages provide visualizations of the quarterly aggregates to maximize coverage. For data not originally provided at a 1km resolution, unless otherwise noted on the “Source” tab on each variable page, the value assigned to each 1km cell is the mean of all measured values within it.")
+                  p("In addition to differing in source and format, the raw data also exists at a variety of spatial and temporal resolutions. All data was aggregated to a standard, 1km resolution grid at both monthly and quarterly intervals. For the EPA sensor data, the gridded values were extracted from an Inverse Distance Weighted interpolation of sensor averages. Interpolated values for variables with fewer sensors will be less accurate than those with more sensors. Due to data availability, particularly with NASA’s remote-sensed Aerosol Optical Depth, individual variable pages provide visualizations of the quarterly aggregates to maximize coverage. For data not originally provided at a 1km resolution, unless otherwise noted on the “Source” tab on each variable page, the value assigned to each 1km cell is the mean of all measured values within it.")
             ))
     ),
     ##### ABOUT END #####
@@ -452,7 +460,7 @@ ui <- dashboardPage(
 
     generateQuarterlyTab(co.tabname, co.name, co.description, co.source),
 
-    generateQuarterlyTab(nox.tabname, nox.name, nox.description, nox.source),
+    generateQuarterlyTab(no2.tabname, no2.name, no2.description, no2.source),
 
     generateQuarterlyTab(o3.tabname, o3.name, o3.description, o3.source),
 
@@ -464,7 +472,9 @@ ui <- dashboardPage(
 
     generateOneTimeTab(roads.tabname, roads.name, roads.description, roads.source),
 
-    generateQuarterlyTab(temp.tabname, temp.name, temp.source, temp.description),
+    generateQuarterlyTab(temp.tabname, temp.name, temp.description, temp.source),
+    
+    generateQuarterlyTab(pressure.tabname, pressure.name, pressure.description, pressure.source),
 
     ##### PRECIPITATION START #####
     tabItem(tabName = "precip",
@@ -993,38 +1003,38 @@ server <- function(input, output) {
     }
   })
 
-  output$nox_map <- renderLeaflet({
+  output$no2_map <- renderLeaflet({
 
-    this.nox.name <- "NO2_3_16"
+    this.no2.name <- "NO2_3_16"
 
     in.pal <- "ovr"
 
-    nox.pal <- palFromLayer(this.nox.name, style = in.pal, raster = master.raster)
+    no2.pal <- palFromLayer(this.no2.name, style = in.pal, raster = master.raster)
 
-    dashMap(this.nox.name, nox.pal, raster = master.raster, 
+    dashMap(this.no2.name, no2.pal, raster = master.raster, 
             area = large.area, layerId = large.area$FIPS,
             EPApoints = epa.points, VarName = "NO2")
 
   })
 
   observe({
-    if(input$sidebar == "nox") {
-    in.date <- input$nox_dt
-    this.nox.name <- getLayerName(in.date, "NO2")
+    if(input$sidebar == "no2") {
+    in.date <- input$no2_dt
+    this.no2.name <- getLayerName(in.date, "NO2")
 
-    in.pal <- input$nox_rad
+    in.pal <- input$no2_rad
 
-    nox.pal <- palFromLayer(this.nox.name, style = in.pal, raster = master.raster)
+    no2.pal <- palFromLayer(this.no2.name, style = in.pal, raster = master.raster)
 
-    sliderProxy("nox_map", this.nox.name, nox.pal, raster = master.raster)
+    sliderProxy("no2_map", this.no2.name, no2.pal, raster = master.raster)
     }
   })
   
-  observeEvent(input$nox_map_shape_click, {
-    if(input$sidebar == "nox") { 
-      click <- input$nox_map_shape_click
+  observeEvent(input$no2_map_shape_click, {
+    if(input$sidebar == "no2") { 
+      click <- input$no2_map_shape_click
       if(!is.null(click$id)) {
-      zoomMap("nox_map", click, large.area)}
+      zoomMap("no2_map", click, large.area)}
     }
   })
 
@@ -1207,6 +1217,39 @@ server <- function(input, output) {
       click <- input$temp_map_shape_click
       if(!is.null(click$id)) {
       zoomMap("temp_map", click, large.area)}
+    }
+  })
+  
+  output$pressure_map <- renderLeaflet({
+    this.pressure.name <- "Pressure_3_16"
+    
+    in.pal <- "ovr"
+    
+    pressure.pal <- palFromLayer(this.pressure.name, style = in.pal, raster = master.raster)
+    
+    dashMap(this.pressure.name, pressure.pal, raster = master.raster, 
+            area = large.area, layerId = large.area$FIPS,
+            EPApoints = epa.points, VarName = "Pressure")
+  })
+  
+  observe({
+    if(input$sidebar == "pressure") {
+      in.date <- input$pressure_dt
+      this.pressure.name <- getLayerName(in.date, "Pressure")
+      
+      in.pal <- input$pressure_rad
+      
+      pressure.pal <- palFromLayer(this.pressure.name, style = in.pal, raster = master.raster)
+      
+      sliderProxy("pressure_map", this.pressure.name, pressure.pal, raster = master.raster)
+    }
+  })
+  
+  observeEvent(input$pressure_map_shape_click, {
+    if(input$sidebar == "pressure") { 
+      click <- input$pressure_map_shape_click
+      if(!is.null(click$id)) {
+        zoomMap("pressure_map", click, large.area)}
     }
   })
 

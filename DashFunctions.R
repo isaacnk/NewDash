@@ -122,7 +122,8 @@ zoomMap <- function(proxy, click, area) {
                   color = "grey", layerId = "Highlighted",
                   opacity = 0.05,
                   label = paste(county, " County"),
-                  labelOptions = labelOptions(noHide = T))}
+                  labelOptions = labelOptions(noHide = T)
+                  )}
   else {
     this.proxy %>%
       removeShape(layerId = "Highlighted") %>%
