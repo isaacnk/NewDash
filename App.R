@@ -394,7 +394,8 @@ ui <- dashboardPage(
                              "Temperature" = "Temp",
                              "Barometric Pressure" = "Pressure"),
                            options = list(maxItems = 7)),
-            plotlyOutput("homeplot", height = 425)))
+            plotlyOutput("homeplot", height = 445),
+            actionButton("clearshapes", "Clear Selection")))
     ),
     ##### HOME END #####
     ##### ABOUT START #####
@@ -570,6 +571,21 @@ server <- function(input, output) {
                              fillOpacity = 0.7,
                              bringToFront = TRUE))
   })
+  
+  observeEvent(input$clearshapes,{
+    if(input$sidebar == "home") {
+      home.proxy <- leafletProxy("homemap")
+        if(input$clearshapes){
+          home.proxy %>%
+            removeShape(layerId = c(paste("Highlighted", all.fips$fips))) %>%
+            setView(lat = 41.97736,
+                    lng = -87.62255,
+                    zoom = 7)
+          all.fips$fips <- c()
+      }
+    }
+  })
+  
   
   # Highlight clicked counties, unhighlight double clicked, zoom to center of all selected
   observeEvent(input$homemap_shape_click, {
