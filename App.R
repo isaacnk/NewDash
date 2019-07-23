@@ -34,6 +34,7 @@ county.avgs$Name <- as.character(county.avgs$Name)
 var.avgs <- colMeans(county.avgs[,4:ncol(county.avgs)], na.rm = T)
 
 epa.points <- st_read("Data/EPA_Points")
+
  ##### DATA LOADING END #####
 
 ##### VARIABLE START #####
@@ -681,11 +682,11 @@ server <- function(input, output) {
     
     selected.fips <- which(county.avgs$FIPS %in% all.fips$fips)
 
-    blues <- c("#033682", "#0356a3", "#0083d9", "#66ccff", "#c9e8ff") 
-    reds <- c("#9c1500", "#f52302", "#ff6e57", "#ff9a8a", "#ffc8bf") 
-    greens <- c("#165422", "#0b9926", "#14ff41", "#91faa5", "#d6ffde") 
+    blues <- c("#033682", "#0356a3", "#0083d9", "#66ccff", "#c9e8ff")
+    reds <- c("#9c1500", "#f52302", "#ff6e57", "#ff9a8a", "#ffc8bf")
+    greens <- c("#165422", "#0b9926", "#14ff41", "#91faa5", "#d6ffde")
     yellows <- c("#8f8a00", "#d4cc04", "#faf005", "#f5f190", "#faf8c3")
-    grays <- c("#343d46", "#4f5b66", "#65737e", "#a7adba", "#c0c5ce") 
+    grays <- c("#343d46", "#4f5b66", "#65737e", "#a7adba", "#c0c5ce")
     
     colors <- data.frame(blues, reds, greens, yellows, grays)
     
