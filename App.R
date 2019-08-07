@@ -447,12 +447,18 @@ ui <- dashboardPage(
                              p(lc.description)),
                     tabPanel(title = "Source",
                              h4("Data Source"),
-                             p(lc.source)))),
+                             p(lc.source))),
+                  radioGroupButtons(inputId = "lc_chi_zoom",
+                                    "Set View", 
+                                    c("21 Counties" = "lac", 
+                                      "Chicago" = "chi"))),
               box(width = 8,
-                  tabsetPanel(
-                    tabPanel("Green Index", leafletOutput("grn_map", height = mapheight)),
-                    tabPanel("Gray Index", leafletOutput("gry_map", height = mapheight)),
-                    tabPanel("Blue Index", leafletOutput("blu_map", height = mapheight)))
+                  leafletOutput("lc_map", height = mapheight),
+                  radioGroupButtons(inputId = "lc_choose",
+                                    "Select Index",
+                                    c("Green" = "grn_ndx",
+                                      "Gray" = "gry_ndx",
+                                      "Blue" = "blu_ndx"))
                   )
             )
     ),
@@ -906,50 +912,111 @@ server <- function(input, output) {
     }
   })
 
-  output$grn_map <- renderLeaflet({
+  output$lc_map <- renderLeaflet({
+    
     grn.pal <- palFromLayer("grn_ndx", colors = c("white","lightgreen", "green", "darkgreen"), raster = master.raster)
-    grn.map <- dashMap("grn_ndx", grn.pal, raster = master.raster, area = large.area,
-                       layerId = large.area$FIPS)
+   
+    lc.map <- dashMap("grn_ndx", grn.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
   })
   
-  observeEvent(input$grn_map_shape_click, {
-    if(input$sidebar == "landcover") { #Optimize Dashboard speed by not observing outside of tab
-      click <- input$grn_map_shape_click
+  observeEvent(input$lc_choose, {
+    if(input$sidebar == "landcover") {
+      grn.pal <- palFromLayer("grn_ndx", colors = c("white","lightgreen", "green", "darkgreen"), raster = master.raster)
+      gry.pal <- palFromLayer("gry_ndx", colors = c("white", "lightgray", "gray", "darkgray", "black"), raster = master.raster)
+      blu.pal <- palFromLayer("blu_ndx", colors = c("white","lightblue", "blue", "darkblue"), raster = master.raster)
       
-      zoomMap("grn_map", click, large.area)
+      lc.proxy <- leafletProxy("lc_map")
       
-    }
-  })
-  
+      if(input$lc_choose == "grn_ndx") {
+        lc.proxy <- lc.proxy %>%
+          clearImages() %>%
+          clearControls()
+        
+        lc.proxy <- lc.proxy %>%
+          addRasterImage(master.raster[["grn_ndx"]], opacity = 0.4, colors = grn.pal) %>%
+          leaflet::addLegend(pal = grn.pal, values = values(master.raster[["grn_ndx"]]), title = "Green Index")
+        
+        
+    } else if(input$lc_choose == "gry_ndx") {
+      lc.proxy <- lc.proxy %>%
+        clearImages() %>%
+        clearControls()
+      
+      lc.proxy <- lc.proxy %>%
+        addRasterImage(master.raster[["gry_ndx"]], opacity = 0.4, colors = gry.pal) %>%
+        leaflet::addLegend(pal = gry.pal, values = values(master.raster[["gry_ndx"]]), title = "Gray Index") 
+      
+      # if("lc_chi_zoom" == "lac") {
+      #   lc.proxy %>%
+      #     addPolygons(data = large.area, 
+      #                 color = "darkslategray",
+      #                 fillOpacity  = 0.01, 
+      #                 stroke = TRUE,
+      #                 opacity = 1,
+      #                 layerId = large.area$FIPS,
+      #                 weight = 1,
+      #                 highlight = highlightOptions(
+      #                   weight = 2, 
+      #                   color = "gray", 
+      #                   fillOpacity = 0.05))
+      #   
+      # } else {
+      #   lc.proxy %>% 
+      #     addPolygons(data = chi.map, 
+      #                 color = "darkslategray",
+      #                 fillOpacity  = 0.01, 
+      #                 stroke = TRUE,
+      #                 opacity = 1,
+      #                 layerId = chi.map$area_numbe,
+      #                 weight = 1,
+      #                 highlight = highlightOptions(
+      #                   weight = 2, 
+      #                   color = "gray", 
+      #                   fillOpacity = 0.05))
+      # }
+      
+      
+    } else if (input$lc_choose == "blu_ndx") {
+      lc.proxy <- lc.proxy %>%
+        clearImages() %>%
+        clearControls()
+      
+      lc.proxy <- lc.proxy %>%
+        addRasterImage(master.raster[["blu_ndx"]], opacity = 0.4, colors = blu.pal) %>%
+        leaflet::addLegend(pal = blu.pal, values = values(master.raster[["blu_ndx"]]), title = "Blue Index") 
 
-  output$gry_map <- renderLeaflet({
-    gry.pal <- palFromLayer("gry_ndx", colors = c("white", "lightgray", "gray", "darkgray", "black"), raster = master.raster)
-    gry.map <- dashMap("gry_ndx", gry.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
+    }
+    }
+      
   })
   
-  observeEvent(input$gry_map_shape_click, {
+  observeEvent(input$lc_map_shape_click, {
     if(input$sidebar == "landcover") { #Optimize Dashboard speed by not observing outside of tab
-      click <- input$gry_map_shape_click
-      
-      zoomMap("gry_map", click, large.area)
-      
+      if(input$lc_chi_zoom == "lac") {
+        
+        click <- input$lc_map_shape_click
+        
+        zoomMap("lc_map", click, large.area)
+      }
+      else if (input$lc_chi_zoom == "chi") {
+        click <- input$lc_map_shape_click
+        
+        zoomChiMap("lc_map", click, chi.map)
+      }
     }
   })
   
-
-  output$blu_map <- renderLeaflet({
-    blu.pal <- palFromLayer("blu_ndx", colors = c("white","lightblue", "blue", "darkblue"), raster = master.raster)
-    blu.map <- dashMap("blu_ndx", blu.pal, raster = master.raster, area = large.area, layerId = large.area$FIPS)
-  })
-  
-  observeEvent(input$blu_map_shape_click, {
-    if(input$sidebar == "landcover") { #Optimize Dashboard speed by not observing outside of tab
-      click <- input$blu_map_shape_click
-      
-      zoomMap("blu_map", click, large.area)
-      
+  observeEvent(input$lc_chi_zoom, {
+    if(input$sidebar == "landcover") {
+      if(input$lc_chi_zoom == "chi") {
+        chiView("lc_map", chi.map) 
+      }
+      else if (input$lc_chi_zoom == "lac") {
+        lacView("lc_map", large.area)
+      }
     }
   })
+      
   
   
   output$elevation_map <- renderLeaflet({
