@@ -117,7 +117,7 @@ zoomMap <- function(proxy, click, area) {
   
   if(fips != "Highlighted") {
     this.proxy %>% 
-      setView(lng = click$lng, lat = click$lat, zoom = 8) %>%
+      flyTo(lng = click$lng, lat = click$lat, zoom = 8) %>%
       addPolygons(data=area[which(area$FIPS == fips),][1],
                   color = "grey", layerId = "Highlighted",
                   opacity = 0.05,
@@ -127,7 +127,7 @@ zoomMap <- function(proxy, click, area) {
   else {
     this.proxy %>%
       removeShape(layerId = "Highlighted") %>%
-      setView(lng = area$LON[12],
+      flyTo(lng = area$LON[12],
               lat = area$LAT[12],
               zoom = 7)
   }

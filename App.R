@@ -14,7 +14,7 @@ library(scales)
 
 ####### TO DO ########
 ### Find reliable precip data --> include
-### Barometric pressure --> added to home, add to Raster and create page for it
+### Add Chicago level permits/"Chicago View" w/ CAs
 
 ##### DATA LOADING START #####
 source("DashFunctions.R")
@@ -34,6 +34,10 @@ county.avgs$Name <- as.character(county.avgs$Name)
 var.avgs <- colMeans(county.avgs[,4:ncol(county.avgs)], na.rm = T)
 
 epa.points <- st_read("Data/EPA_Points")
+
+chi.map <- st_read("Data/Chicago")
+chi.map <- sf::st_transform(chi.map, CRS('+proj=longlat +datum=WGS84'))
+cdph.permits <- st_read("Data/CDPH_Permits")
 
  ##### DATA LOADING END #####
 
@@ -470,7 +474,26 @@ ui <- dashboardPage(
 
     generateQuarterlyTab(pb.tabname, pb.name, pb.description, pb.source),
 
-    generateOneTimeTab(pe.tabname, pe.name, pe.description, pe.source),
+    tabItem(tabName = pe.tabname,
+            fluidRow(
+              box(width = 4,
+                  tabsetPanel(
+                    tabPanel(title = "Description",
+                             h3(pe.name),
+                             p(pe.description)),
+                    tabPanel(title = "Source",
+                             h4("Data Source"),
+                             p(pe.source))) 
+              ),
+              box(width = 8,
+                  leafletOutput(paste(pe.tabname, "map", sep = "_"), height = 500),
+                  radioGroupButtons(inputId = "pe_chi_zoom",
+                                    "Set View", 
+                                    c("NEI Source Density (21 Counties)" = "lac", 
+                                      "CDPH Permits  (Chicago)" = "chi"))
+                  
+              )
+            )),
 
     generateOneTimeTab(roads.tabname, roads.name, roads.description, roads.source),
 
@@ -1166,21 +1189,150 @@ server <- function(input, output) {
   output$pe_map <- renderLeaflet({
 
     pe.pal <- palFromLayer("PECount", colors = c("darkgreen", "yellow2", "darkorange", "darkred"), raster = master.raster)
-    pe.map <- dashMap("PECount", pe.pal, raster = master.raster, 
-                      area = large.area, layerId = large.area$FIPS,
-                      rasterOpacity = 0.7)
+    
+    pe.map <- leaflet("PECount") %>%
+      addMapPane("polygons", zIndex = 410) %>%
+      addMapPane("points", zIndex = 420) %>% 
+      addProviderTiles("Hydda.Full") %>%
+      addRasterImage(master.raster[["PECount"]], opacity = 0.7, colors = pe.pal) %>%
+      leaflet::addLegend(pal = pe.pal, values = values(master.raster[["PECount"]]), title = "Point Emission Sources") %>%
+      addPolygons(data = large.area, 
+                  color = "darkslategray",
+                  fillOpacity  = 0.01, 
+                  stroke = TRUE,
+                  opacity = 1,
+                  layerId = large.area$FIPS,
+                  weight = 1,
+                  highlight = highlightOptions(
+                    weight = 2, 
+                    color = "gray", 
+                    fillOpacity = 0.05))
 
   })
   
-  
   observeEvent(input$pe_map_shape_click, {
     if(input$sidebar == "pe") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$pe_chi_zoom == "lac") {
+      
       click <- input$pe_map_shape_click
       
       zoomMap("pe_map", click, large.area)
+      }
+      else if (input$pe_chi_zoom == "chi") {
+        click <- input$pe_map_shape_click
+        
+        this.proxy <- leafletProxy("pe_map")
+        ca.num <- click$id
+        
+        ca <- chi.map$community[which(chi.map$area_numbe == ca.num)]
+        
+        if(ca.num != "Highlighted") {
+        
+          # xcoords <- sf::st_bbox(chi.map[which(chi.map$area_numbe == ca.num),])[c("xmin","xmax")]
+          # ycoords <- sf::st_bbox(chi.map[which(chi.map$area_numbe == ca.num),])[c("ymin","ymax")]
+          # 
+          # xmean <- mean(xcoords)
+          # ymean <- mean(ycoords)
+          
+          if(!is.na(as.numeric(ca.num)) && as.numeric(ca.num) > 77) { #prevent crash when county clicked
+            this.proxy %>%
+              flyTo(lng = -87.660456,
+                    lat = 41.845027,
+                    zoom = 10)
+          } else {
+          this.proxy %>% 
+            flyTo(lng = click$lng, lat = click$lat, zoom = 13) %>% #change to setView if too slow
+            addPolygons(data=chi.map[which(chi.map$area_numbe == ca.num),][1],
+                        color = "grey", layerId = "Highlighted",
+                        opacity = 0.05,
+                        label = ca,
+                        labelOptions = labelOptions(noHide = T),
+                        options = leafletOptions(pane = "polygons")
+            )
+            }
+          }
+        else {
+          this.proxy %>%
+            removeShape(layerId = "Highlighted") %>%
+            flyTo(lng = -87.660456,
+                    lat = 41.845027,
+                    zoom = 10)
+        }
+        
+        
+        
+        
+      }
+    }
+  })
+  
+  observeEvent(input$pe_chi_zoom, {
+    if(input$sidebar == "pe") {
+      
+      if(input$pe_chi_zoom == "chi") {
+      pe.proxy <- leafletProxy("pe_map") %>%
+        clearImages()
+        # clearControls() %>%
+        # clearImages() %>%
+        # clearShapes()
+      
+      pe.proxy %>%
+        flyTo(lng = -87.660456,
+                lat = 41.845027,
+                zoom = 10) %>%
+        addPolygons(data = chi.map,
+                    color = "darkslategray",
+                    stroke = T,
+                    opacity = 1,
+                    layerId = chi.map$area_numbe,
+                    weight = 1,
+                    fillOpacity = 0.01,
+                    options = leafletOptions(pane = "polygons")) %>%
+        addCircleMarkers(data = cdph.permits,
+                   color = "black",
+                   radius = 0.3,
+                   stroke = T,
+                   opacity = 1,
+                   weight = 0.75,
+                   label = cdph.permits$APPLICAT_1,
+                   popup = paste(cdph.permits$APPLICAT_1,
+                                 cdph.permits$ADDRE,
+                                 sep = "\n"),
+                   options = leafletOptions(pane = "points"))
+      
+      
+      } else if (input$pe_chi_zoom == "lac") {
+        
+        
+        pe.proxy <- leafletProxy("pe_map") %>%
+          clearControls() %>%
+          clearImages() %>%
+          clearShapes() %>%
+          clearMarkers() 
+        
+        pe.pal <- palFromLayer("PECount", colors = c("darkgreen", "yellow2", "darkorange", "darkred"), raster = master.raster)
+        
+        pe.proxy %>%
+          setView(lat = "41.97736", lng = "-87.62255", zoom = 7) %>% 
+          addRasterImage(master.raster[["PECount"]], opacity = 0.7, colors = pe.pal) %>%
+          leaflet::addLegend(pal = pe.pal, values = values(master.raster[["PECount"]]), title = "Point Emission Sources") %>%
+          addPolygons(data = large.area, 
+                      color = "darkslategray",
+                      fillOpacity  = 0.01, 
+                      stroke = TRUE,
+                      opacity = 1,
+                      layerId = large.area$FIPS,
+                      weight = 1,
+                      highlight = highlightOptions(
+                        weight = 2, 
+                        color = "gray", 
+                        fillOpacity = 0.05))
+          
+      }
       
     }
   })
+  
   
 
   output$roads_map <- renderLeaflet({
