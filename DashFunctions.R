@@ -13,7 +13,11 @@ generateQuarterlyTab <- function(tabname, variablename, variabledescription, sou
                   p(variabledescription)),
                 tabPanel(title = "Source",
                   h4("Data Source"),
-                  p(sourcedescription)))
+                  p(sourcedescription))),
+              radioGroupButtons(inputId = paste(tabname, "chi_zoom", sep = "_"),
+                                              "Set View", 
+                                              c("21 Counties" = "lac", 
+                                                "Chicago" = "chi"))
               ),
             box(width = 8,
                 sliderInput(paste(tabname, "dt", sep = "_"), "Select quarter:",
@@ -43,10 +47,16 @@ generateOneTimeTab <- function(tabname, variablename, variabledescription, sourc
                          p(variabledescription)),
                 tabPanel(title = "Source",
                          h4("Data Source"),
-                         p(sourcedescription))) 
+                         p(sourcedescription))
+                ),
+              radioGroupButtons(inputId = paste(tabname, "chi_zoom", sep = "_"),
+                                "Set View", 
+                                c("21 Counties" = "lac", 
+                                  "Chicago" = "chi"))
               ),
             box(width = 8,
                 leafletOutput(paste(tabname, "map", sep = "_"), height = mapheight)
+                
             )
               ))
 }
@@ -120,7 +130,7 @@ zoomMap <- function(proxy, click, area) {
       flyTo(lng = click$lng, lat = click$lat, zoom = 8) %>%
       addPolygons(data=area[which(area$FIPS == fips),][1],
                   color = "grey", layerId = "Highlighted",
-                  opacity = 0.05,
+                  opacity = 0.01,
                   label = paste(county, " County"),
                   labelOptions = labelOptions(noHide = T)
                   )}
@@ -132,6 +142,86 @@ zoomMap <- function(proxy, click, area) {
               zoom = 7)
   }
 }
+
+
+
+zoomChiMap <- function(proxy, click, area) {
+  
+  this.proxy <- leafletProxy(proxy)
+  ca.num <- click$id
+  
+  ca <- area$community[which(area$area_numbe == ca.num)]
+  
+  if(ca.num != "Highlighted") {
+    
+    if(!is.na(as.numeric(ca.num)) && as.numeric(ca.num) > 77) { #prevent crash when county clicked
+      this.proxy %>%
+        flyTo(lng = -87.660456,
+              lat = 41.845027,
+              zoom = 10)
+    } else {
+      this.proxy %>% 
+        flyTo(lng = click$lng, lat = click$lat, zoom = 12) %>% #change to setView if too slow
+        addPolygons(data=area[which(area$area_numbe == ca.num),][1],
+                    color = "grey", layerId = "Highlighted",
+                    opacity = 0.01,
+                    label = area$community[which(area$area_numbe == ca.num)],
+                    labelOptions = labelOptions(noHide = T)
+        )
+    }
+  }
+  else {
+    this.proxy %>%
+      removeShape(layerId = "Highlighted") %>%
+      flyTo(lng = -87.660456,
+            lat = 41.845027,
+            zoom = 10)
+  }
+}
+
+chiView <- function(proxy, area) {
+  
+  this.proxy <- leafletProxy(proxy)
+  this.proxy <- this.proxy %>%
+    clearShapes()
+  
+  this.proxy %>%
+    flyTo(lng = -87.660456,
+          lat = 41.845027,
+          zoom = 10) %>%
+    addPolygons(data = area,
+                color = "darkslategray",
+                stroke = T,
+                opacity = 1,
+                layerId = area$area_numbe,
+                weight = 1,
+                fillOpacity = 0.01)
+}
+
+lacView <- function(proxy, area) {
+  
+  this.proxy <- leafletProxy(proxy)
+  this.proxy <- this.proxy %>%
+    clearShapes() 
+    
+  this.proxy %>%
+    flyTo(lat = "41.97736", lng = "-87.62255", zoom = 7) %>% 
+    addPolygons(data = area, 
+                color = "darkslategray",
+                fillOpacity  = 0.01, 
+                stroke = TRUE,
+                opacity = 1,
+                layerId = area$FIPS,
+                weight = 1,
+                highlight = highlightOptions(
+                  weight = 2, 
+                  color = "gray", 
+                  fillOpacity = 0.05))
+}
+
+
+
+
 
 #Creates palette
 #qtr: Palette covers single quarter

@@ -474,26 +474,7 @@ ui <- dashboardPage(
 
     generateQuarterlyTab(pb.tabname, pb.name, pb.description, pb.source),
 
-    tabItem(tabName = pe.tabname,
-            fluidRow(
-              box(width = 4,
-                  tabsetPanel(
-                    tabPanel(title = "Description",
-                             h3(pe.name),
-                             p(pe.description)),
-                    tabPanel(title = "Source",
-                             h4("Data Source"),
-                             p(pe.source))) 
-              ),
-              box(width = 8,
-                  leafletOutput(paste(pe.tabname, "map", sep = "_"), height = 500),
-                  radioGroupButtons(inputId = "pe_chi_zoom",
-                                    "Set View", 
-                                    c("NEI Source Density (21 Counties)" = "lac", 
-                                      "CDPH Permits  (Chicago)" = "chi"))
-                  
-              )
-            )),
+    generateOneTimeTab(pe.tabname, pe.name, pe.description, pe.source),
 
     generateOneTimeTab(roads.tabname, roads.name, roads.description, roads.source),
 
@@ -795,10 +776,28 @@ server <- function(input, output) {
   
   observeEvent(input$aod_map_shape_click, {
     if(input$sidebar == "aod") { #Optimize Dashboard speed by not observing outside of tab
-      click <- input$aod_map_shape_click
-      
-      zoomMap("aod_map", click, large.area)
-      
+      if(input$aod_chi_zoom == "lac") {
+        
+        click <- input$aod_map_shape_click
+        
+        zoomMap("aod_map", click, large.area)
+      }
+      else if (input$aod_chi_zoom == "chi") {
+        click <- input$aod_map_shape_click
+        
+        zoomChiMap("aod_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$aod_chi_zoom, {
+    if(input$sidebar == "aod") {
+      if(input$aod_chi_zoom == "chi") {
+        chiView("aod_map", chi.map) 
+      }
+      else if (input$aod_chi_zoom == "lac") {
+        lacView("aod_map", large.area)
+      }
     }
   })
 
@@ -829,10 +828,29 @@ server <- function(input, output) {
   })
   
   observeEvent(input$ndvi_map_shape_click, {
-    if(input$sidebar == "ndvi") { 
-      click <- input$ndvi_map_shape_click
-      
-      zoomMap("ndvi_map", click, large.area)
+    if(input$sidebar == "ndvi") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$ndvi_chi_zoom == "lac") {
+        
+        click <- input$ndvi_map_shape_click
+        
+        zoomMap("ndvi_map", click, large.area)
+      }
+      else if (input$ndvi_chi_zoom == "chi") {
+        click <- input$ndvi_map_shape_click
+        
+        zoomChiMap("ndvi_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$ndvi_chi_zoom, {
+    if(input$sidebar == "ndvi") {
+      if(input$ndvi_chi_zoom == "chi") {
+        chiView("ndvi_map", chi.map) 
+      }
+      else if (input$ndvi_chi_zoom == "lac") {
+        lacView("ndvi_map", large.area)
+      }
     }
   })
 
@@ -862,10 +880,29 @@ server <- function(input, output) {
   })
   
   observeEvent(input$brf_map_shape_click, {
-    if(input$sidebar == "brf") { 
-      click <- input$brf_map_shape_click
-      
-      zoomMap("brf_map", click, large.area)
+    if(input$sidebar == "brf") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$brf_chi_zoom == "lac") {
+        
+        click <- input$brf_map_shape_click
+        
+        zoomMap("brf_map", click, large.area)
+      }
+      else if (input$brf_chi_zoom == "chi") {
+        click <- input$brf_map_shape_click
+        
+        zoomChiMap("brf_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$brf_chi_zoom, {
+    if(input$sidebar == "brf") {
+      if(input$brf_chi_zoom == "chi") {
+        chiView("brf_map", chi.map) 
+      }
+      else if (input$brf_chi_zoom == "lac") {
+        lacView("brf_map", large.area)
+      }
     }
   })
 
@@ -926,10 +963,28 @@ server <- function(input, output) {
   
   observeEvent(input$elevation_map_shape_click, {
     if(input$sidebar == "elevation") { #Optimize Dashboard speed by not observing outside of tab
-      click <- input$elevation_map_shape_click
-      
-      zoomMap("elevation_map", click, large.area)
-      
+      if(input$elevation_chi_zoom == "lac") {
+        
+        click <- input$elevation_map_shape_click
+        
+        zoomMap("elevation_map", click, large.area)
+      }
+      else if (input$elevation_chi_zoom == "chi") {
+        click <- input$elevation_map_shape_click
+        
+        zoomChiMap("elevation_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$elevation_chi_zoom, {
+    if(input$sidebar == "elevation") {
+      if(input$elevation_chi_zoom == "chi") {
+        chiView("elevation_map", chi.map) 
+      }
+      else if (input$elevation_chi_zoom == "lac") {
+        lacView("elevation_map", large.area)
+      }
     }
   })
   
@@ -966,10 +1021,29 @@ server <- function(input, output) {
   })
   
   observeEvent(input$pm25_map_shape_click, {
-    if(input$sidebar == "pm25") { 
-      click <- input$pm25_map_shape_click
-      if(!is.null(click$id)) {
-      zoomMap("pm25_map", click, large.area)}
+    if(input$sidebar == "pm25") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$pm25_chi_zoom == "lac") {
+        
+        click <- input$pm25_map_shape_click
+        
+        zoomMap("pm25_map", click, large.area)
+      }
+      else if (input$pm25_chi_zoom == "chi") {
+        click <- input$pm25_map_shape_click
+        
+        zoomChiMap("pm25_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$pm25_chi_zoom, {
+    if(input$sidebar == "pm25") {
+      if(input$pm25_chi_zoom == "chi") {
+        chiView("pm25_map", chi.map) 
+      }
+      else if (input$pm25_chi_zoom == "lac") {
+        lacView("pm25_map", large.area)
+      }
     }
   })
 
@@ -1001,10 +1075,29 @@ server <- function(input, output) {
   })
   
   observeEvent(input$pm10_map_shape_click, {
-    if(input$sidebar == "pm10") { 
-      click <- input$pm10_map_shape_click
-      if(!is.null(click$id)) {
-      zoomMap("pm10_map", click, large.area)}
+    if(input$sidebar == "pm10") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$pm10_chi_zoom == "lac") {
+        
+        click <- input$pm10_map_shape_click
+        
+        zoomMap("pm10_map", click, large.area)
+      }
+      else if (input$pm10_chi_zoom == "chi") {
+        click <- input$pm10_map_shape_click
+        
+        zoomChiMap("pm10_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$pm10_chi_zoom, {
+    if(input$sidebar == "pm10") {
+      if(input$pm10_chi_zoom == "chi") {
+        chiView("pm10_map", chi.map) 
+      }
+      else if (input$pm10_chi_zoom == "lac") {
+        lacView("pm10_map", large.area)
+      }
     }
   })
 
@@ -1036,10 +1129,29 @@ server <- function(input, output) {
   })
   
   observeEvent(input$co_map_shape_click, {
-    if(input$sidebar == "co") { 
-      click <- input$co_map_shape_click
-      if(!is.null(click$id)) {
-      zoomMap("co_map", click, large.area)}
+    if(input$sidebar == "co") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$co_chi_zoom == "lac") {
+        
+        click <- input$co_map_shape_click
+        
+        zoomMap("co_map", click, large.area)
+      }
+      else if (input$co_chi_zoom == "chi") {
+        click <- input$co_map_shape_click
+        
+        zoomChiMap("co_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$co_chi_zoom, {
+    if(input$sidebar == "co") {
+      if(input$co_chi_zoom == "chi") {
+        chiView("co_map", chi.map) 
+      }
+      else if (input$co_chi_zoom == "lac") {
+        lacView("co_map", large.area)
+      }
     }
   })
 
@@ -1071,10 +1183,29 @@ server <- function(input, output) {
   })
   
   observeEvent(input$no2_map_shape_click, {
-    if(input$sidebar == "no2") { 
-      click <- input$no2_map_shape_click
-      if(!is.null(click$id)) {
-      zoomMap("no2_map", click, large.area)}
+    if(input$sidebar == "no2") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$no2_chi_zoom == "lac") {
+        
+        click <- input$no2_map_shape_click
+        
+        zoomMap("no2_map", click, large.area)
+      }
+      else if (input$no2_chi_zoom == "chi") {
+        click <- input$no2_map_shape_click
+        
+        zoomChiMap("no2_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$no2_chi_zoom, {
+    if(input$sidebar == "no2") {
+      if(input$no2_chi_zoom == "chi") {
+        chiView("no2_map", chi.map) 
+      }
+      else if (input$no2_chi_zoom == "lac") {
+        lacView("no2_map", large.area)
+      }
     }
   })
 
@@ -1106,10 +1237,29 @@ server <- function(input, output) {
   })
   
   observeEvent(input$o3_map_shape_click, {
-    if(input$sidebar == "o3") { 
-      click <- input$o3_map_shape_click
-      if(!is.null(click$id)) {
-      zoomMap("o3_map", click, large.area)}
+    if(input$sidebar == "o3") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$o3_chi_zoom == "lac") {
+        
+        click <- input$o3_map_shape_click
+        
+        zoomMap("o3_map", click, large.area)
+      }
+      else if (input$o3_chi_zoom == "chi") {
+        click <- input$o3_map_shape_click
+        
+        zoomChiMap("o3_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$o3_chi_zoom, {
+    if(input$sidebar == "o3") {
+      if(input$o3_chi_zoom == "chi") {
+        chiView("o3_map", chi.map) 
+      }
+      else if (input$o3_chi_zoom == "lac") {
+        lacView("o3_map", large.area)
+      }
     }
   })
 
@@ -1142,10 +1292,29 @@ server <- function(input, output) {
   })
 
   observeEvent(input$so2_map_shape_click, {
-    if(input$sidebar == "so2") { 
-      click <- input$so2_map_shape_click
-      if(!is.null(click$id)) {
-      zoomMap("so2_map", click, large.area)}
+    if(input$sidebar == "so2") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$so2_chi_zoom == "lac") {
+        
+        click <- input$so2_map_shape_click
+        
+        zoomMap("so2_map", click, large.area)
+      }
+      else if (input$so2_chi_zoom == "chi") {
+        click <- input$so2_map_shape_click
+        
+        zoomChiMap("so2_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$so2_chi_zoom, {
+    if(input$sidebar == "so2") {
+      if(input$so2_chi_zoom == "chi") {
+        chiView("so2_map", chi.map) 
+      }
+      else if (input$so2_chi_zoom == "lac") {
+        lacView("so2_map", large.area)
+      }
     }
   })
   
@@ -1179,10 +1348,29 @@ server <- function(input, output) {
   })
   
   observeEvent(input$pb_map_shape_click, {
-    if(input$sidebar == "pb") { 
-      click <- input$pb_map_shape_click
-      if(!is.null(click$id)) {
-      zoomMap("pb_map", click, large.area)}
+    if(input$sidebar == "pb") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$pb_chi_zoom == "lac") {
+        
+        click <- input$pb_map_shape_click
+        
+        zoomMap("pb_map", click, large.area)
+      }
+      else if (input$pb_chi_zoom == "chi") {
+        click <- input$pb_map_shape_click
+        
+        zoomChiMap("pb_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$pb_chi_zoom, {
+    if(input$sidebar == "pb") {
+      if(input$pb_chi_zoom == "chi") {
+        chiView("pb_map", chi.map) 
+      }
+      else if (input$pb_chi_zoom == "lac") {
+        lacView("pb_map", large.area)
+      }
     }
   })
 
@@ -1210,68 +1398,31 @@ server <- function(input, output) {
 
   })
   
+    
   observeEvent(input$pe_map_shape_click, {
     if(input$sidebar == "pe") { #Optimize Dashboard speed by not observing outside of tab
       if(input$pe_chi_zoom == "lac") {
-      
-      click <- input$pe_map_shape_click
-      
-      zoomMap("pe_map", click, large.area)
+        
+        click <- input$pe_map_shape_click
+        
+        zoomMap("pe_map", click, large.area)
       }
       else if (input$pe_chi_zoom == "chi") {
         click <- input$pe_map_shape_click
-        
-        this.proxy <- leafletProxy("pe_map")
-        ca.num <- click$id
-        
-        ca <- chi.map$community[which(chi.map$area_numbe == ca.num)]
-        
-        if(ca.num != "Highlighted") {
-        
-          # xcoords <- sf::st_bbox(chi.map[which(chi.map$area_numbe == ca.num),])[c("xmin","xmax")]
-          # ycoords <- sf::st_bbox(chi.map[which(chi.map$area_numbe == ca.num),])[c("ymin","ymax")]
-          # 
-          # xmean <- mean(xcoords)
-          # ymean <- mean(ycoords)
-          
-          if(!is.na(as.numeric(ca.num)) && as.numeric(ca.num) > 77) { #prevent crash when county clicked
-            this.proxy %>%
-              flyTo(lng = -87.660456,
-                    lat = 41.845027,
-                    zoom = 10)
-          } else {
-          this.proxy %>% 
-            flyTo(lng = click$lng, lat = click$lat, zoom = 13) %>% #change to setView if too slow
-            addPolygons(data=chi.map[which(chi.map$area_numbe == ca.num),][1],
-                        color = "grey", layerId = "Highlighted",
-                        opacity = 0.05,
-                        label = ca,
-                        labelOptions = labelOptions(noHide = T),
-                        options = leafletOptions(pane = "polygons")
-            )
-            }
-          }
-        else {
-          this.proxy %>%
-            removeShape(layerId = "Highlighted") %>%
-            flyTo(lng = -87.660456,
-                    lat = 41.845027,
-                    zoom = 10)
-        }
-        
-        
-        
-        
+        zoomChiMap("pe_map", click, chi.map)
       }
     }
   })
+  
   
   observeEvent(input$pe_chi_zoom, {
     if(input$sidebar == "pe") {
       
       if(input$pe_chi_zoom == "chi") {
       pe.proxy <- leafletProxy("pe_map") %>%
-        clearImages()
+        clearImages() %>%
+        clearControls() %>%
+        clearShapes()
         # clearControls() %>%
         # clearImages() %>%
         # clearShapes()
@@ -1286,8 +1437,7 @@ server <- function(input, output) {
                     opacity = 1,
                     layerId = chi.map$area_numbe,
                     weight = 1,
-                    fillOpacity = 0.01,
-                    options = leafletOptions(pane = "polygons")) %>%
+                    fillOpacity = 0.01) %>%
         addCircleMarkers(data = cdph.permits,
                    color = "black",
                    radius = 0.3,
@@ -1348,10 +1498,28 @@ server <- function(input, output) {
   
   observeEvent(input$roads_map_shape_click, {
     if(input$sidebar == "roads") { #Optimize Dashboard speed by not observing outside of tab
-      click <- input$roads_map_shape_click
-      
-      zoomMap("roads_map", click, large.area)
-      
+      if(input$roads_chi_zoom == "lac") {
+        
+        click <- input$roads_map_shape_click
+        
+        zoomMap("roads_map", click, large.area)
+      }
+      else if (input$roads_chi_zoom == "chi") {
+        click <- input$roads_map_shape_click
+        
+        zoomChiMap("roads_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$roads_chi_zoom, {
+    if(input$sidebar == "roads") {
+      if(input$roads_chi_zoom == "chi") {
+        chiView("roads_map", chi.map) 
+      }
+      else if (input$roads_chi_zoom == "lac") {
+        lacView("roads_map", large.area)
+      }
     }
   })
   
@@ -1382,10 +1550,29 @@ server <- function(input, output) {
   })
   
   observeEvent(input$temp_map_shape_click, {
-    if(input$sidebar == "temp") { 
-      click <- input$temp_map_shape_click
-      if(!is.null(click$id)) {
-      zoomMap("temp_map", click, large.area)}
+    if(input$sidebar == "temp") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$temp_chi_zoom == "lac") {
+        
+        click <- input$temp_map_shape_click
+        
+        zoomMap("temp_map", click, large.area)
+      }
+      else if (input$temp_chi_zoom == "chi") {
+        click <- input$temp_map_shape_click
+        
+        zoomChiMap("temp_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$temp_chi_zoom, {
+    if(input$sidebar == "temp") {
+      if(input$temp_chi_zoom == "chi") {
+        chiView("temp_map", chi.map) 
+      }
+      else if (input$temp_chi_zoom == "lac") {
+        lacView("temp_map", large.area)
+      }
     }
   })
   
@@ -1415,10 +1602,29 @@ server <- function(input, output) {
   })
   
   observeEvent(input$pressure_map_shape_click, {
-    if(input$sidebar == "pressure") { 
-      click <- input$pressure_map_shape_click
-      if(!is.null(click$id)) {
-        zoomMap("pressure_map", click, large.area)}
+    if(input$sidebar == "pressure") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$pressure_chi_zoom == "lac") {
+        
+        click <- input$pressure_map_shape_click
+        
+        zoomMap("pressure_map", click, large.area)
+      }
+      else if (input$pressure_chi_zoom == "chi") {
+        click <- input$pressure_map_shape_click
+        
+        zoomChiMap("pressure_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$pressure_chi_zoom, {
+    if(input$sidebar == "pressure") {
+      if(input$pressure_chi_zoom == "chi") {
+        chiView("pressure_map", chi.map) 
+      }
+      else if (input$pressure_chi_zoom == "lac") {
+        lacView("pressure_map", large.area)
+      }
     }
   })
 
