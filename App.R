@@ -983,7 +983,7 @@ server <- function(input, output) {
       
       lc.proxy <- lc.proxy %>%
         addRasterImage(master.raster[["blu_ndx"]], opacity = 0.4, colors = blu.pal) %>%
-        leaflet::addLegend(pal = blu.pal, values = values(master.raster[["blu_ndx"]]), title = "Blue Index") 
+        leaflet::addLegend(pal = blu.pal, values = values(master.raster[["blu_ndx"]]), title = "Blue Index")
 
     }
     }
@@ -1106,10 +1106,10 @@ server <- function(input, output) {
   observeEvent(input$pm25_chi_zoom, {
     if(input$sidebar == "pm25") {
       if(input$pm25_chi_zoom == "chi") {
-        chiView("pm25_map", chi.map) 
+        chiView("pm25_map", chi.map, EPApoints = epa.points, VarName = "PM25") 
       }
       else if (input$pm25_chi_zoom == "lac") {
-        lacView("pm25_map", large.area)
+        lacView("pm25_map", large.area, EPApoints = epa.points, VarName = "PM25")
       }
     }
   })
@@ -1160,10 +1160,10 @@ server <- function(input, output) {
   observeEvent(input$pm10_chi_zoom, {
     if(input$sidebar == "pm10") {
       if(input$pm10_chi_zoom == "chi") {
-        chiView("pm10_map", chi.map) 
+        chiView("pm10_map", chi.map, EPApoints = epa.points, VarName = "PM10") 
       }
       else if (input$pm10_chi_zoom == "lac") {
-        lacView("pm10_map", large.area)
+        lacView("pm10_map", large.area, EPApoints = epa.points, VarName = "PM10")
       }
     }
   })
@@ -1214,10 +1214,10 @@ server <- function(input, output) {
   observeEvent(input$co_chi_zoom, {
     if(input$sidebar == "co") {
       if(input$co_chi_zoom == "chi") {
-        chiView("co_map", chi.map) 
+        chiView("co_map", chi.map, EPApoints = epa.points, VarName = "CO") 
       }
       else if (input$co_chi_zoom == "lac") {
-        lacView("co_map", large.area)
+        lacView("co_map", large.area, EPApoints = epa.points, VarName = "CO")
       }
     }
   })
@@ -1268,10 +1268,10 @@ server <- function(input, output) {
   observeEvent(input$no2_chi_zoom, {
     if(input$sidebar == "no2") {
       if(input$no2_chi_zoom == "chi") {
-        chiView("no2_map", chi.map) 
+        chiView("no2_map", chi.map, EPApoints = epa.points, VarName = "NO2") 
       }
       else if (input$no2_chi_zoom == "lac") {
-        lacView("no2_map", large.area)
+        lacView("no2_map", large.area, EPApoints = epa.points, VarName = "NO2")
       }
     }
   })
@@ -1322,10 +1322,10 @@ server <- function(input, output) {
   observeEvent(input$o3_chi_zoom, {
     if(input$sidebar == "o3") {
       if(input$o3_chi_zoom == "chi") {
-        chiView("o3_map", chi.map) 
+        chiView("o3_map", chi.map, EPApoints = epa.points, VarName = "Ozone") 
       }
       else if (input$o3_chi_zoom == "lac") {
-        lacView("o3_map", large.area)
+        lacView("o3_map", large.area, EPApoints = epa.points, VarName = "Ozone")
       }
     }
   })
@@ -1377,10 +1377,10 @@ server <- function(input, output) {
   observeEvent(input$so2_chi_zoom, {
     if(input$sidebar == "so2") {
       if(input$so2_chi_zoom == "chi") {
-        chiView("so2_map", chi.map) 
+        chiView("so2_map", chi.map, EPApoints = epa.points, VarName = "SO2") 
       }
       else if (input$so2_chi_zoom == "lac") {
-        lacView("so2_map", large.area)
+        lacView("so2_map", large.area, EPApoints = epa.points, VarName = "SO2")
       }
     }
   })
@@ -1433,10 +1433,10 @@ server <- function(input, output) {
   observeEvent(input$pb_chi_zoom, {
     if(input$sidebar == "pb") {
       if(input$pb_chi_zoom == "chi") {
-        chiView("pb_map", chi.map) 
+        chiView("pb_map", chi.map, EPApoints = epa.points, VarName = "Lead") 
       }
       else if (input$pb_chi_zoom == "lac") {
-        lacView("pb_map", large.area)
+        lacView("pb_map", large.area, EPApoints = epa.points, VarName = "Lead")
       }
     }
   })
@@ -1635,10 +1635,10 @@ server <- function(input, output) {
   observeEvent(input$temp_chi_zoom, {
     if(input$sidebar == "temp") {
       if(input$temp_chi_zoom == "chi") {
-        chiView("temp_map", chi.map) 
+        chiView("temp_map", chi.map, EPApoints = epa.points, VarName = "Temp") 
       }
       else if (input$temp_chi_zoom == "lac") {
-        lacView("temp_map", large.area)
+        lacView("temp_map", large.area, EPApoints = epa.points, VarName = "Temp")
       }
     }
   })
@@ -1687,10 +1687,10 @@ server <- function(input, output) {
   observeEvent(input$pressure_chi_zoom, {
     if(input$sidebar == "pressure") {
       if(input$pressure_chi_zoom == "chi") {
-        chiView("pressure_map", chi.map) 
+        chiView("pressure_map", chi.map, EPApoints = epa.points, VarName = "Pressure") 
       }
       else if (input$pressure_chi_zoom == "lac") {
-        lacView("pressure_map", large.area)
+        lacView("pressure_map", large.area, EPApoints = epa.points, VarName = "Pressure")
       }
     }
   })

@@ -125,6 +125,7 @@ zoomMap <- function(proxy, click, area) {
   fips <- click$id
   county <- area$COUNTYNAME[which(area$FIPS == fips)]
   
+  if(!is.null(fips)) {
   if(fips != "Highlighted") {
     this.proxy %>% 
       flyTo(lng = click$lng, lat = click$lat, zoom = 8) %>%
@@ -134,12 +135,13 @@ zoomMap <- function(proxy, click, area) {
                   label = paste(county, " County"),
                   labelOptions = labelOptions(noHide = T)
                   )}
-  else {
+  else if (fips == "Highlighted") {
     this.proxy %>%
       removeShape(layerId = "Highlighted") %>%
       flyTo(lng = area$LON[12],
               lat = area$LAT[12],
               zoom = 7)
+  }
   }
 }
 
@@ -152,6 +154,7 @@ zoomChiMap <- function(proxy, click, area) {
   
   ca <- area$community[which(area$area_numbe == ca.num)]
   
+  if(!is.null(ca.num)) {
   if(ca.num != "Highlighted") {
     
     if(!is.na(as.numeric(ca.num)) && as.numeric(ca.num) > 77) { #prevent crash when county clicked
@@ -170,22 +173,23 @@ zoomChiMap <- function(proxy, click, area) {
         )
     }
   }
-  else {
+  else if (ca.num == "Highlighted") {
     this.proxy %>%
       removeShape(layerId = "Highlighted") %>%
       flyTo(lng = -87.660456,
             lat = 41.845027,
             zoom = 10)
   }
+  }
 }
 
-chiView <- function(proxy, area) {
+chiView <- function(proxy, area, EPApoints = NULL, VarName = NULL) {
   
   this.proxy <- leafletProxy(proxy)
   this.proxy <- this.proxy %>%
     clearShapes()
   
-  this.proxy %>%
+  this.proxy <- this.proxy %>%
     flyTo(lng = -87.660456,
           lat = 41.845027,
           zoom = 10) %>%
@@ -196,15 +200,24 @@ chiView <- function(proxy, area) {
                 layerId = area$area_numbe,
                 weight = 1,
                 fillOpacity = 0.01)
+  
+  if (!is.null(EPApoints)) {
+    this.proxy <- this.proxy %>%
+      addCircles(lng = EPApoints$Longitude[EPApoints$Var == VarName],
+                 lat = EPApoints$Latitude[EPApoints$Var == VarName],
+                 radius = 2, color = "black", opacity = 0.9)
+  }
+  
+  this.proxy
 }
 
-lacView <- function(proxy, area) {
+lacView <- function(proxy, area, EPApoints = NULL, VarName = Null) {
   
   this.proxy <- leafletProxy(proxy)
   this.proxy <- this.proxy %>%
     clearShapes() 
     
-  this.proxy %>%
+  this.proxy <- this.proxy %>%
     flyTo(lat = "41.97736", lng = "-87.62255", zoom = 7) %>% 
     addPolygons(data = area, 
                 color = "darkslategray",
@@ -217,6 +230,16 @@ lacView <- function(proxy, area) {
                   weight = 2, 
                   color = "gray", 
                   fillOpacity = 0.05))
+  
+  if (!is.null(EPApoints)) {
+    this.proxy <- this.proxy %>%
+      addCircles(lng = EPApoints$Longitude[EPApoints$Var == VarName],
+                 lat = EPApoints$Latitude[EPApoints$Var == VarName],
+                 radius = 2, color = "black", opacity = 0.9)
+  }
+  
+  this.proxy
+  
 }
 
 
