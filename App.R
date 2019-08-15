@@ -14,7 +14,6 @@ library(scales)
 
 ####### TO DO ########
 ### Find reliable precip data --> include
-### Add Chicago level permits/"Chicago View" w/ CAs
 
 ##### DATA LOADING START #####
 source("DashFunctions.R")
@@ -945,37 +944,7 @@ server <- function(input, output) {
       lc.proxy <- lc.proxy %>%
         addRasterImage(master.raster[["gry_ndx"]], opacity = 0.4, colors = gry.pal) %>%
         leaflet::addLegend(pal = gry.pal, values = values(master.raster[["gry_ndx"]]), title = "Gray Index") 
-      
-      # if("lc_chi_zoom" == "lac") {
-      #   lc.proxy %>%
-      #     addPolygons(data = large.area, 
-      #                 color = "darkslategray",
-      #                 fillOpacity  = 0.01, 
-      #                 stroke = TRUE,
-      #                 opacity = 1,
-      #                 layerId = large.area$FIPS,
-      #                 weight = 1,
-      #                 highlight = highlightOptions(
-      #                   weight = 2, 
-      #                   color = "gray", 
-      #                   fillOpacity = 0.05))
-      #   
-      # } else {
-      #   lc.proxy %>% 
-      #     addPolygons(data = chi.map, 
-      #                 color = "darkslategray",
-      #                 fillOpacity  = 0.01, 
-      #                 stroke = TRUE,
-      #                 opacity = 1,
-      #                 layerId = chi.map$area_numbe,
-      #                 weight = 1,
-      #                 highlight = highlightOptions(
-      #                   weight = 2, 
-      #                   color = "gray", 
-      #                   fillOpacity = 0.05))
-      # }
-      
-      
+
     } else if (input$lc_choose == "blu_ndx") {
       lc.proxy <- lc.proxy %>%
         clearImages() %>%
@@ -984,7 +953,6 @@ server <- function(input, output) {
       lc.proxy <- lc.proxy %>%
         addRasterImage(master.raster[["blu_ndx"]], opacity = 0.4, colors = blu.pal) %>%
         leaflet::addLegend(pal = blu.pal, values = values(master.raster[["blu_ndx"]]), title = "Blue Index")
-
     }
     }
       
