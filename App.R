@@ -930,7 +930,7 @@ server <- function(input, output) {
         lc.proxy <- lc.proxy %>%
           clearImages() %>%
           clearControls()
-        
+      
         lc.proxy <- lc.proxy %>%
           addRasterImage(master.raster[["grn_ndx"]], opacity = 0.4, colors = grn.pal) %>%
           leaflet::addLegend(pal = grn.pal, values = values(master.raster[["grn_ndx"]]), title = "Green Index")
@@ -1498,7 +1498,7 @@ server <- function(input, output) {
         pe.pal <- palFromLayer("PECount", colors = c("darkgreen", "yellow2", "darkorange", "darkred"), raster = master.raster)
         
         pe.proxy %>%
-          setView(lat = "41.97736", lng = "-87.62255", zoom = 7) %>% 
+          flyTo(lat = "41.97736", lng = "-87.62255", zoom = 7) %>% 
           addRasterImage(master.raster[["PECount"]], opacity = 0.7, colors = pe.pal) %>%
           leaflet::addLegend(pal = pe.pal, values = values(master.raster[["PECount"]]), title = "Point Emission Sources") %>%
           addPolygons(data = large.area, 
