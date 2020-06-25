@@ -62,7 +62,8 @@ generateOneTimeTab <- function(tabname, variablename, variabledescription, sourc
 }
 
 ##### Date Slider Output to Raster Layer Name
-getLayerName <- function(in.date, variable) {
+getLayerName <- function(in.date, variable, period = "qtr") {
+  
   in.date <- as.Date(in.date)
   
   var.month <- month(in.date)
@@ -71,21 +72,25 @@ getLayerName <- function(in.date, variable) {
   var.qtr <- ceiling(var.month/3)
   
   var.yr <- substring(var.yr, 3, 4) 
-  
-  this.var.name <- paste(variable, var.qtr, var.yr, sep = "_")
+  if(period == "qtr") {
+    this.var.name <- paste(variable, var.qtr, var.yr, sep = "_")
+  }
+  else if (period == "mon") {
+    this.var.name <- paste(variable, var.month, var.yr, sep = "_")
+  }
 }
 
 ##### Generate Leaflet Map 
-dashMap <- function(layername, layerpal, raster, area, layerId, rasterOpacity = 0.4,
+dashMap <- function(layername, layerpal, raster, area, layerId, rasterOpacity = 0.8,
                     EPApoints = NULL, VarName = NULL) {
   
     dMap <- leaflet(layername) %>%
-    addProviderTiles("Hydda.Full") %>%
+    addProviderTiles("OpenStreetMap.HOT") %>%
     addRasterImage(raster[[layername]], opacity = rasterOpacity, colors = layerpal) %>%
     leaflet::addLegend(pal = layerpal, values = values(raster[[layername]]), title = gsub("_.*","",layername)) %>%
     addPolygons(data = area, 
                 color = "darkslategray",
-                fillOpacity  = 0.01, 
+                fillOpacity  = 0.00, 
                 stroke = TRUE,
                 opacity = 1,
                 layerId = layerId,
@@ -107,11 +112,11 @@ dashMap <- function(layername, layerpal, raster, area, layerId, rasterOpacity = 
 
 ##### For use in observe function with slider
 
-sliderProxy <- function(mapname, layername, layerpal, raster) {
+sliderProxy <- function(mapname, layername, layerpal, raster, rasterOpacity = 0.8) {
   leafletProxy(mapname) %>%
     clearControls() %>%
     clearImages() %>%
-    addRasterImage(raster[[layername]], opacity = 0.4, colors = layerpal) %>%
+    addRasterImage(raster[[layername]], opacity = rasterOpacity, colors = layerpal) %>%
     leaflet::addLegend(pal = layerpal, values = values(raster[[layername]]), title = gsub("_.*","",layername))
 }
 
@@ -252,7 +257,7 @@ lacView <- function(proxy, area, EPApoints = NULL, VarName = Null) {
 
 palFromLayer <- function(layername, style = "ovr", colors = c("green", "yellow", "orange", "red"), 
                          raster, nacolor = "transparent") {
-  if(style == "qtr") {
+  if(style == "qtr" || style == "mon") {
     
     this.raster <- raster[[layername]]
     

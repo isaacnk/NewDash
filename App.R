@@ -12,6 +12,7 @@ library(data.table)
 library(raster)
 library(scales)
 
+
 ####### TO DO ########
 ### Find reliable precip data --> include
 
@@ -35,14 +36,30 @@ var.avgs <- colMeans(county.avgs[,4:ncol(county.avgs)], na.rm = T)
 epa.points <- st_read("Data/EPA_Points")
 
 chi.map <- st_read("Data/Chicago")
-chi.map <- sf::st_transform(chi.map, CRS('+proj=longlat +datum=WGS84'))
+#chi.map <- sf::st_transform(chi.map, CRS('+proj=longlat +datum=WGS84'))
+
 cdph.permits <- st_read("Data/CDPH_Permits")
 
- ##### DATA LOADING END #####
+
+#NN Data Loading
+nn.raster <- stack("Data/NN_Results.tif")
+nn.names <- read.csv("Data/NN_Raster_Names.csv")
+
+names(nn.raster) <- nn.names$nn_names
+
+
+##### DATA LOADING END #####
 
 ##### VARIABLE START #####
 
 mapheight = 500
+
+
+##### NN START #####
+nn.description <- c("FILLER TEXT")
+nn.source <- c("FILLER TEXT")
+
+##### NN END #####
 
 ##### AOD START #####
 aod.tabname <- "aod"
@@ -339,6 +356,7 @@ ui <- dashboardPage(
   dashboardSidebar(sidebarMenu(id = "sidebar",
     menuItem("Home", tabName = "home", icon = icon("home")),
     menuItem("About", tabName = "about", icon = icon("info")),
+    menuItem("Neural Net Model", tabName = "nn", icon = icon("code-branch")),
     menuItem("Remote-Sensed Data", icon = icon("wifi"),
              menuSubItem("Aerosol Optical Depth", tabName = "aod"),
              menuSubItem("NDVI", tabName = "ndvi"),
@@ -429,6 +447,40 @@ ui <- dashboardPage(
             ))
     ),
     ##### ABOUT END #####
+    
+    ##### NN START #####
+    
+    tabItem(tabName = "nn",
+            fluidRow(
+              box(width = 4,
+                  tabsetPanel(
+                    tabPanel(title = "Description",
+                             h3("Neural Net Model"),
+                             p(nn.description)),
+                    tabPanel(title = "Source",
+                             h4("Data Source"),
+                             p(nn.source))),
+                  radioGroupButtons(inputId = paste("nn", "chi_zoom", sep = "_"),
+                                    "Set View", 
+                                    c("21 Counties" = "lac", 
+                                      "Chicago" = "chi"))
+              ),
+              box(width = 8,
+                  sliderInput(paste("nn", "dt", sep = "_"), "Select month:",
+                              min = strptime("2014/03/01","%Y/%m/%d"), 
+                              max = strptime("2018/12/31","%Y/%m/%d"),
+                              value = strptime("2016/07/01","%Y/%m/%d"),
+                              timeFormat = "%Y/%m",
+                              step = as.difftime(10, units = "days"),
+                              animate = animationOptions(interval = 3000)),
+                  leafletOutput(paste("nn", "map", sep = "_"),height = mapheight),
+                  radioGroupButtons(paste("nn", "rad", sep = "_"), "Select Color Palette", 
+                                    c("Overall" = "ovr", "Yearly" = "yr", "Monthly" = "mon"), 
+                                    selected = "ovr"))
+            )),
+    
+    
+    ##### NN END #####
 
     generateQuarterlyTab(aod.tabname, aod.name, aod.description, aod.source),
 
@@ -568,7 +620,7 @@ server <- function(input, output) {
   
   output$homemap <- renderLeaflet({
     leaflet(large.area) %>%
-      addProviderTiles(provider = "Hydda.Full") %>%
+      addProviderTiles(provider = "OpenStreetMap.HOT") %>%
       setView(lat = "41.97736", lng = "-87.62255", zoom = 7) %>% 
       leaflet::addPolygons(weight = 1,
                            color = "gray",
@@ -751,6 +803,67 @@ server <- function(input, output) {
   
 
   ##### ABOUT END #####
+  
+  ##### NN START #####
+  
+  output$nn_map <- renderLeaflet({
+    this.nn.name <- "NN_7_16"
+    
+    in.pal <- "ovr"
+    
+    nn.pal <- palFromLayer(this.nn.name, style = in.pal, raster = nn.raster)
+    
+    dashMap(this.nn.name, nn.pal, raster = nn.raster, area = large.area, 
+            layerId = large.area$FIPS)
+  })
+  
+  observe({
+    if (input$sidebar == "nn") { #Optimize Dashboard speed by not observing outside of tab
+      in.date <- input$nn_dt
+      
+      this.nn.name <- getLayerName(in.date, "NN", period = "mon")
+      
+      ## Stopgap fix to not crash app; model missing Jan/Feb 2014 and 2015
+      if(this.nn.name == "NN_1_15" || this.nn.name == "NN_2_15") {
+        this.nn.name <- "NN_3_15"
+      }
+      
+      in.pal <- input$nn_rad
+       
+      nn.pal <- palFromLayer(this.nn.name, style = in.pal, raster = nn.raster)
+       
+      sliderProxy("nn_map", this.nn.name, nn.pal, raster = nn.raster)
+    }
+  })
+  
+  observeEvent(input$nn_map_shape_click, {
+    if(input$sidebar == "nn") { #Optimize Dashboard speed by not observing outside of tab
+      if(input$nn_chi_zoom == "lac") {
+        
+        click <- input$nn_map_shape_click
+        
+        zoomMap("nn_map", click, large.area)
+      }
+      else if (input$nn_chi_zoom == "chi") {
+        click <- input$nn_map_shape_click
+        
+        zoomChiMap("nn_map", click, chi.map)
+      }
+    }
+  })
+  
+  observeEvent(input$nn_chi_zoom, {
+    if(input$sidebar == "nn") {
+      if(input$nn_chi_zoom == "chi") {
+        chiView("nn_map", chi.map) 
+      }
+      else if (input$nn_chi_zoom == "lac") {
+        lacView("nn_map", large.area)
+      }
+    }
+  })
+  
+  ##### NN END #####
 
 
   output$aod_map <- renderLeaflet({
@@ -1416,7 +1529,7 @@ server <- function(input, output) {
     pe.map <- leaflet("PECount") %>%
       addMapPane("polygons", zIndex = 410) %>%
       addMapPane("points", zIndex = 420) %>% 
-      addProviderTiles("Hydda.Full") %>%
+      addProviderTiles("OpenStreetMap.HOT") %>%
       addRasterImage(master.raster[["PECount"]], opacity = 0.7, colors = pe.pal) %>%
       leaflet::addLegend(pal = pe.pal, values = values(master.raster[["PECount"]]), title = "Point Emission Sources") %>%
       addPolygons(data = large.area, 
@@ -1729,5 +1842,4 @@ server <- function(input, output) {
 
 }
 
-shinyApp(ui, server)
-
+shinyApp(ui, server) 
