@@ -37,7 +37,7 @@ generateQuarterlyTab <- function(tabname, variablename, variabledescription, sou
 
 ### Create Tab Page for Variables with One Time Data
 generateOneTimeTab <- function(tabname, variablename, variabledescription, sourcedescription,
-                               mapheight = 500) {
+                               mapviewselected = "lac", mapheight = 500) {
   tabItem(tabName = tabname,
           fluidRow(
             box(width = 4,
@@ -52,7 +52,8 @@ generateOneTimeTab <- function(tabname, variablename, variabledescription, sourc
               radioGroupButtons(inputId = paste(tabname, "chi_zoom", sep = "_"),
                                 "Set View", 
                                 c("21 Counties" = "lac", 
-                                  "Chicago" = "chi"))
+                                  "Chicago" = "chi"),
+                                selected = mapviewselected)
               ),
             box(width = 8,
                 leafletOutput(paste(tabname, "map", sep = "_"), height = mapheight)
